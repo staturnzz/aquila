@@ -67,7 +67,7 @@ int main(void) {
     setgid(0);
     draw_splash_screen("/private/var/aquila/splashscreen.jp2");
 
-    if (run_exploit() != 0) {
+    if (run_oob_entry(true) != 0) {
         print_log("[-] exploit failed\n");
         usleep(100000);
         exit(0);

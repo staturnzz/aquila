@@ -26,7 +26,6 @@
 *.dll
 *.so
 *.so.*
-*.dylib
 
 # Executables
 *.exe
@@ -53,6 +52,6 @@ dkms.conf
 resources/payload.dmg
 installer/installer
 bins/aquila
-bins/aquila_macos
 cli/macos/aquila
-untether/aquila
+/.vscode
+cli/macos/aquila

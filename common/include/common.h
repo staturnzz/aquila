@@ -23,6 +23,7 @@
 #include <mach-o/swap.h>
 #include <device/device_types.h>
 #include <CoreFoundation/CoreFoundation.h>
+#include <CoreGraphics/CoreGraphics.h>
 #include <netinet/in.h>
 #include <unistd.h>
 #include <fcntl.h>

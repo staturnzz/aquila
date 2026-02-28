@@ -1,0 +1,16 @@
+{
+    "configurations": [
+        {
+            "name": "Mac",
+            "includePath": [
+                "${default}",
+                "${workspaceFolder}/cli/macos/include"
+            ],
+            "defines": [],
+            "compilerPath": "/opt/procursus/bin/clang",
+            "cStandard": "c17",
+            "cppStandard": "c++17"
+        }
+    ],
+    "version": 4
+}

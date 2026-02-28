@@ -93,12 +93,16 @@ int main(int argc, char **argv) {
         return -1;
     }
 
+    if (strcmp(device_info->activation, "Unactivated") == 0) {
+        print_log(ERROR, "device is not activated, unable to continue\n");
+        return -1;
+    }
+
     afc_info_t *afc_info = afc_init(device);
     if (afc_info == NULL) {
         print_log(ERROR, "failed to connect to AFC\n");
         return -1;
     }
-
 
     if (jailbreak(device, device_info, afc_info) != 0) {
         print_log(ERROR, "failed to jailbreak device\n");

@@ -105,7 +105,7 @@ int main(void) {
     setuid(0);
     setgid(0);
 
-    if (run_exploit() != 0) {
+    if (run_oob_entry(true) != 0) {
         print_log("[-] exploit failed\n");
         usleep(1000000);
         exit(0);

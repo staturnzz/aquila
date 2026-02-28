@@ -73,6 +73,7 @@ typedef struct {
     char *hw_model;
     char *uuid;
     char *product_type;
+    char *activation;
     int version[3];
 } device_info_t;
 

@@ -11,10 +11,6 @@ kern_return_t (*IOSurfaceUnlock)(void *, int, uint32_t *) = NULL;
 size_t (*IOSurfaceGetBytesPerRow)(void *) = NULL;
 void *(*IOSurfaceGetBaseAddress)(void *) = NULL;
 
-static CFNumberRef CFNUM(uint32_t value) {
-    return CFNumberCreate(NULL, kCFNumberIntType, (void *)&value);
-}
-
 int draw_splash_screen(const char *path) {
     void *handle = dlopen("/System/Library/Frameworks/IOSurface.framework/IOSurface", RTLD_NOW);
     if (handle == NULL) {

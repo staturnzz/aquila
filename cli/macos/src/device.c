@@ -28,12 +28,33 @@ static void md_connect_handler(am_device_notification_callback_info_t *info, int
             return;
         }
         
-        if (AMDeviceConnect(info->dev) != 0) return;
-        if (AMDeviceIsPaired(info->dev) != 1) return;
-        if (AMDeviceValidatePairing(info->dev) != 0) return;
-        if (AMDeviceStartSession(info->dev) != 0) return;
+        int err = AMDeviceConnect(info->dev);
+        if (err != 0) {
+            print_log(VERBOSE, "AMDeviceConnect failed: %d\n", err);
+            return;
+        }
+
+        err = AMDeviceIsPaired(info->dev);
+        if (err != 1) {
+            print_log(VERBOSE, "AMDeviceIsPaired failed: %d\n", err);
+            return;
+        }
+
+        err = AMDeviceValidatePairing(info->dev);
+        if (err != 0) {
+            print_log(VERBOSE, "AMDeviceValidatePairing failed: %d\n", err);
+            return;
+        }
+
+        err = AMDeviceStartSession(info->dev);
+        if (err != 0) {
+            print_log(VERBOSE, "AMDeviceStartSession failed: %d\n", err);
+            return;
+        }
 
         last_device = info->dev;
+        print_log(VERBOSE, "device connection: %p\n", last_device);
+
         if (wait_for_device) {
             CFRunLoopStop(CFRunLoopGetCurrent());
             wait_for_device = false;
@@ -49,7 +70,11 @@ int md_init(void) {
         AMDSetLogLevel(5);
     }
 
-    if (AMDeviceNotificationSubscribe(md_connect_handler, 0, 0, 0, &md_notification) != 0) return -1;
+    int err = AMDeviceNotificationSubscribe(md_connect_handler, 0, 0, 0, &md_notification);
+    if (err != 0) {
+        print_log(VERBOSE, "AMDeviceNotificationSubscribe failed: %d\n", err);
+        return -1;
+    }
     return 0;
 }
 
@@ -71,7 +96,7 @@ am_device_t *md_await_device(void) {
 }
 
 char *md_get_device_value(am_device_t *device, const char *key) {
-    print_log(VERBOSE, "copying value: %s\n", key);
+    print_log(VERBOSE, "AMDeviceCopyValue: %s\n", key);
     CFStringRef cf_key = CFStringCreateWithCString(NULL, key, kCFStringEncodingASCII);
     CFStringRef value = (CFStringRef)AMDeviceCopyValue(device, 0, cf_key);
     CFRelease(cf_key);
@@ -100,14 +125,17 @@ device_info_t *md_device_info(am_device_t *device) {
     char *uuid = NULL;
     char *product_type = NULL;
     char *version = NULL;
+    char *activation = NULL;
 
     if ((cpu_arch = md_get_device_value(device, "CPUArchitecture")) == NULL) goto err;
     if ((hw_model = md_get_device_value(device, "HardwareModel")) == NULL) goto err;
     if ((uuid = md_get_device_value(device, "UniqueDeviceID")) == NULL) goto err;
     if ((product_type = md_get_device_value(device, "ProductType")) == NULL) goto err;
     if ((version = md_get_device_value(device, "ProductVersion")) == NULL) goto err;
+    if ((activation = md_get_device_value(device, "ActivationState")) == NULL) goto err;
 
     device_info_t *info = calloc(1, sizeof(device_info_t));
+    info->activation = activation;
     info->cpu_arch = cpu_arch;
     info->hw_model = hw_model;
     info->uuid = uuid;
@@ -128,7 +156,7 @@ err:
 }
 
 int md_open_service(am_device_t *device, const char *name, bool timeout) {
-    print_log(VERBOSE, "opening service: %s\n", name);
+    print_log(VERBOSE, "AMDeviceStartService: %s\n", name);
     CFStringRef cf_name = CFStringCreateWithCString(NULL, name, kCFStringEncodingASCII);
     int service = -1;
     int rv = -1;
@@ -148,7 +176,7 @@ int md_open_service(am_device_t *device, const char *name, bool timeout) {
 }
 
 void *md_open_secure_service(am_device_t *device, const char *name) {
-    print_log(VERBOSE, "opening service: %s\n", name);
+    print_log(VERBOSE, "AMDeviceSecureStartService: %s\n", name);
     CFStringRef cf_name = CFStringCreateWithCString(NULL, name, kCFStringEncodingASCII);
     void *service = NULL;
 

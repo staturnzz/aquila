@@ -1,40 +1,19 @@
 
+#include "exploit.h"
 #include "util.h"
 
-kern_return_t (*io_hideventsystem_open)(mach_port_t, mach_port_t, mach_port_t *) = NULL;
-kern_return_t (*io_hideventsystem_clear_service_cache)(mach_port_t) = NULL;
-kern_return_t (*io_hideventsystem_copy_matching_services)(mach_port_t, void *, int, mach_vm_address_t *, mach_vm_size_t *, mach_vm_address_t *, mach_vm_size_t *) = NULL;
-kern_return_t (*io_hideventsystem_queue_create)(mach_port_t, mach_port_t, int, mach_port_t *) = NULL;
-kern_return_t (*io_hideventsystem_queue_start)(mach_port_t) = NULL;
-kern_return_t (*io_hideventsystem_queue_stop)(mach_port_t) = NULL;
-io_service_t (*IOServiceGetMatchingService)(mach_port_t mainPort, CFDictionaryRef matching) = NULL;
-CFMutableDictionaryRef (*IOServiceMatching)(const char *name) = NULL;
-io_object_t (*IOIteratorNext)(uint32_t iterator) = NULL;
-kern_return_t (*IOObjectRelease)(io_object_t) = NULL;
-kern_return_t (*IOConnectMapMemory)(io_connect_t, uint32_t, task_port_t, vm_address_t *, vm_size_t *, uint32_t) = NULL;
-kern_return_t (*IOConnectSetNotificationPort)(io_connect_t, uint32_t, mach_port_t, uintptr_t) = NULL;
-kern_return_t (*IOConnectCallMethod)(mach_port_t, uint32_t, uint64_t *, uint32_t, void *, size_t, uint64_t *, uint32_t *, void *, size_t *) = NULL;
-IOHIDEventRef (*IOHIDEventCreateKeyboardEvent)(CFAllocatorRef, uint64_t, uint16_t, uint16_t, Boolean, uint32_t flags) = NULL;
-IOHIDEventSystemClientRef (*IOHIDEventSystemClientCreate)(CFAllocatorRef) = NULL;
-void (*IOHIDEventSetSenderID)(IOHIDEventRef, uint64_t) = NULL;
-void (*IOHIDEventSystemClientDispatchEvent)(IOHIDEventSystemClientRef, IOHIDEventRef) = NULL;
-IOHIDEventRef (*IOHIDEventCreateAccelerometerEvent)(CFAllocatorRef, uint64_t, float, float, float, IOOptionBits options) = NULL;
-kern_return_t (*IORegistryEntryGetProperty)(io_registry_entry_t, const io_name_t, io_struct_inband_t, uint32_t *) = NULL;
-kern_return_t (*IOServiceClose)(io_connect_t) = NULL;
-kern_return_t (*io_service_open_extended)(mach_port_t, task_t, uint32_t, NDR_record_t, io_buf_ptr_t, mach_msg_type_number_t, kern_return_t *, mach_port_t *) = NULL;
-kern_return_t (*IORegistryEntryCreateIterator)(io_registry_entry_t, const io_name_t, IOOptionBits, mach_port_t *) = NULL;
-kern_return_t (*IOServiceOpen)(io_service_t, task_port_t, uint32_t, io_connect_t *) = NULL;
-CFTypeRef (*IORegistryEntryCreateCFProperty)(io_registry_entry_t entry, CFStringRef key, CFAllocatorRef allocator, IOOptionBits options) = NULL;
-kern_return_t (*IOServiceGetMatchingServices)(mach_port_t mainPort, CFDictionaryRef matching, mach_port_t *existing) = NULL;
-kern_return_t (*IOConnectSetCFProperty)(io_connect_t connect, CFStringRef propertyName, CFTypeRef property) = NULL;
-kern_return_t (*IORegistryEntryCreateCFProperties)(io_registry_entry_t entry, CFMutableDictionaryRef *properties, CFAllocatorRef allocator, IOOptionBits options);
-
-static uint32_t spin_gadget = 0;
+void *(*__IOSurfaceCreate)(CFDictionaryRef) = NULL;
+void *(*__IOSurfaceGetBaseAddress)(void *) = NULL;
+int (*__IOServiceOpen)(mach_port_t, mach_port_t, uint32_t, mach_port_t *) = NULL;
+CFMutableDictionaryRef (*__IOServiceMatching)(const char *) = NULL;
+mach_port_t (*__IOServiceGetMatchingService)(mach_port_t, CFDictionaryRef) = NULL;
+int (*__IOMobileFramebufferOpen)(mach_port_t, mach_port_t, uint32_t, void *) = NULL;
+int (*__IOMobileFramebufferGetLayerDefaultSurface)(mach_port_t, int, void *) = NULL;
 
 void print_log(const char *fmt, ...) {
     static bool log_opened;
     if (!log_opened) {
-        openlog("aquila_untether", LOG_PID | LOG_CONS, LOG_USER);
+        openlog("aquila", LOG_PID | LOG_CONS, LOG_USER);
         log_opened = true;
     }
     
@@ -45,95 +24,174 @@ void print_log(const char *fmt, ...) {
     va_end(va);
 }
 
-int iosurface_init(void) {
-    void *handle = dlopen("/System/Library/Frameworks/IOSurface.framework/IOSurface", RTLD_NOW);
-    if (handle == NULL) {
-        handle = dlopen("/System/Library/PrivateFrameworks/IOSurface.framework/IOSurface", RTLD_NOW);
-        if (handle == NULL) return -1;
+int init_io(void) {
+    void *io_handle = dlopen("/System/Library/Frameworks/IOSurface.framework/IOSurface", RTLD_NOW);
+    if (io_handle == NULL) {
+        io_handle = dlopen("/System/Library/PrivateFrameworks/IOSurface.framework/IOSurface", RTLD_NOW);
+        if (io_handle == NULL) return -1;
     }
-    
-    find_io_sym(io_hideventsystem_open);
-    find_io_sym(io_hideventsystem_clear_service_cache);
-    find_io_sym(io_hideventsystem_copy_matching_services);
-    find_io_sym(io_hideventsystem_queue_create);
-    find_io_sym(io_hideventsystem_queue_start);
-    find_io_sym(io_hideventsystem_queue_stop);
-    find_io_sym(IOServiceGetMatchingService);
-    find_io_sym(IOServiceMatching);
-    find_io_sym(IOIteratorNext);
-    find_io_sym(IOObjectRelease);
-    find_io_sym(IOConnectMapMemory);
-    find_io_sym(IOConnectSetNotificationPort);
-    find_io_sym(IOConnectCallMethod);
-    find_io_sym(IOHIDEventCreateKeyboardEvent);
-    find_io_sym(IOHIDEventSystemClientCreate);
-    find_io_sym(IOHIDEventSetSenderID);
-    find_io_sym(IOHIDEventSystemClientDispatchEvent);
-    find_io_sym(IOHIDEventCreateAccelerometerEvent);
-    find_io_sym(IORegistryEntryGetProperty);
-    find_io_sym(IOServiceClose);
-    find_io_sym(io_service_open_extended);
-    find_io_sym(IORegistryEntryCreateIterator);
-    find_io_sym(IOServiceOpen);
-    find_io_sym(IORegistryEntryCreateCFProperty);
-    find_io_sym(IOServiceGetMatchingServices);
-    find_io_sym(IOConnectSetCFProperty);
-    find_io_sym(IORegistryEntryCreateCFProperties);
+
+    if ((__IOSurfaceCreate = dlsym(io_handle, "IOSurfaceCreate")) == NULL) return -1;
+    if ((__IOSurfaceGetBaseAddress = dlsym(io_handle, "IOSurfaceGetBaseAddress")) == NULL) return -1;
+    if ((__IOServiceGetMatchingService = dlsym(io_handle, "IOServiceGetMatchingService")) == NULL) return -1;
+    if ((__IOServiceMatching = dlsym(io_handle, "IOServiceMatching")) == NULL) return -1;
+    if ((__IOServiceOpen = dlsym(io_handle, "IOServiceOpen")) == NULL) return -1;
+
+    void *fb_handle = dlopen("/System/Library/Frameworks/IOMobileFramebuffer.framework/IOMobileFramebuffer", RTLD_NOW);
+    if (fb_handle == NULL) {
+        fb_handle = dlopen("/System/Library/PrivateFrameworks/IOMobileFramebuffer.framework/IOMobileFramebuffer", RTLD_NOW);
+        if (fb_handle == NULL) return -1;
+    }
+
+    if ((__IOMobileFramebufferOpen = dlsym(fb_handle, "IOMobileFramebufferOpen")) == NULL) return -1;
+    if ((__IOMobileFramebufferGetLayerDefaultSurface = dlsym(fb_handle, "IOMobileFramebufferGetLayerDefaultSurface")) == NULL) return -1;
     return 0;
 }
 
-size_t task_read(mach_port_t task, uint32_t addr, void *buf, size_t size) {
-    size_t off = 0;
-    while (off < size) {
-        mach_vm_size_t sz, chunk = 2048;
-        if (chunk > size - off) chunk = size - off;
-        mach_vm_read_overwrite(task, addr + off, chunk, (uint32_t)buf + off, &sz);
-        off += sz;
+void get_ios_version(uint32_t *output) {
+    char str[32] = {0};
+    CFDictionaryRef dict = _CFCopySystemVersionDictionary();
+    CFStringRef version = CFDictionaryGetValue(dict, CFSTR("ProductVersion"));
+    CFStringGetCString(version, str, 32, kCFStringEncodingUTF8);
+    
+    sscanf(str, "%d.%d.%d", &output[0], &output[1], &output[2]);
+    CFRelease(dict);
+}
+
+CFNumberRef CFNUM(uint32_t value) {
+    return CFNumberCreate(NULL, kCFNumberIntType, (void *)&value);
+}
+
+uint64_t timer_start(void) {
+    return mach_absolute_time();
+}
+
+uint64_t timer_end(uint64_t start) {
+    uint64_t end = mach_absolute_time();
+    mach_timebase_info_data_t info = {0};
+    mach_timebase_info(&info);
+    return (uint64_t)(((double)(end - start) * info.numer / info.denom) / 1000000);
+}
+
+int init_offsets(void) {
+    get_ios_version(kinfo->version);
+    if (kinfo->version[0] < 3 || kinfo->version[0] > 10) return -1;
+    
+    size_t size = sizeof(kinfo->mem_size);
+    sysctlbyname("hw.physmem", &kinfo->mem_size, &size, NULL, 0);
+    kinfo->mem_size &= 0xfff00000;
+
+    uint32_t cpu_family = 0;
+    size = sizeof(cpu_family);
+    sysctlbyname("hw.cpufamily", &cpu_family, &size, NULL, 0);
+
+    if (cpu_family == CPUFAMILY_ARM_14 || cpu_family == CPUFAMILY_ARM_SWIFT) {
+        kinfo->kernel_static_base = 0x80001000;
+        kinfo->kernel_phys_base = 0x80001000;
+        kinfo->mem_base = 0x80000000;
+    } else {
+        if (kinfo->version[0] == 3 && kinfo->version[1] <= 1) {
+            kinfo->kernel_static_base = 0xc0008000;
+            kinfo->kernel_phys_base = 0x40008000;
+            kinfo->mem_base = 0x40000000;
+        } else {
+            kinfo->kernel_static_base = 0x80001000;
+            kinfo->kernel_phys_base = 0x40001000;
+            kinfo->mem_base = 0x40000000;
+        }
     }
-    return off;
-}
 
-size_t task_write(mach_port_t task, uint32_t addr, void *buf, size_t size) {
-    size_t off = 0;
-    while (off < size) {
-        size_t chunk = 2048;
-        if (chunk > size - off) chunk = size - off;
-        mach_vm_write(task, addr + off, (uint32_t)buf + off, (int)chunk);
-        off += chunk;
+    switch (kinfo->version[0]) {
+        case 10:
+            kinfo->offsets.task.ref_count = 0x8;
+            kinfo->offsets.task.itk_self = 0x9c;
+            kinfo->offsets.task.itk_seatbelt = 0x1c8;
+            kinfo->offsets.proc.next = 0x4;
+            kinfo->offsets.proc.pid = 0x8;
+            kinfo->offsets.proc.task = 0xc;
+            kinfo->offsets.proc.lock_type = 0x48;
+            kinfo->offsets.proc.p_stat = 0x4c;
+            kinfo->offsets.ipc_port.ip_references = 0x4;
+            break;
+        case 9:
+            kinfo->offsets.task.ref_count = 0xc;
+            kinfo->offsets.task.itk_self = 0xa4;
+            kinfo->offsets.task.itk_seatbelt = 0x198;
+            kinfo->offsets.proc.next = 0x4;
+            kinfo->offsets.proc.pid = 0x8;
+            kinfo->offsets.proc.task = 0xc;
+            kinfo->offsets.proc.lock_type = 0x4c;
+            kinfo->offsets.proc.p_stat = 0x50;
+            kinfo->offsets.ipc_port.ip_references = 0x4;
+            break;
+        case 8:
+            kinfo->offsets.task.ref_count = 0xc;
+            kinfo->offsets.task.itk_self = 0xa4;
+            kinfo->offsets.task.itk_seatbelt = 0x188;
+            kinfo->offsets.proc.next = 0x4;
+            kinfo->offsets.proc.pid = 0x8;
+            kinfo->offsets.proc.task = 0xc;
+            kinfo->offsets.proc.lock_type = 0x4c;
+            kinfo->offsets.proc.p_stat = 0x50;
+            kinfo->offsets.ipc_port.ip_references = 0x4;
+            break;
+        case 7:
+            kinfo->offsets.task.ref_count = 0xc;
+            kinfo->offsets.task.itk_self = 0xa0;
+            kinfo->offsets.task.itk_seatbelt = 0x184;
+            kinfo->offsets.proc.next = 0x4;
+            kinfo->offsets.proc.pid = 0x8;
+            kinfo->offsets.proc.task = 0xc;
+            kinfo->offsets.proc.lock_type = 0x4c;
+            kinfo->offsets.proc.p_stat = 0x50;
+            kinfo->offsets.ipc_port.ip_references = 0x4;
+            break;
+        case 6:
+            kinfo->offsets.task.ref_count = 0xc;
+            kinfo->offsets.task.itk_self = 0x9c;
+            kinfo->offsets.task.itk_seatbelt = 0x180;
+            kinfo->offsets.proc.next = 0x4;
+            kinfo->offsets.proc.pid = 0x8;
+            kinfo->offsets.proc.task = 0xc;
+            kinfo->offsets.proc.lock_type = 0x44;
+            kinfo->offsets.proc.p_stat = 0x48;
+            kinfo->offsets.ipc_port.ip_references = 0x4;
+            break;
+        case 5:
+            kinfo->offsets.task.ref_count = 0xc;
+            kinfo->offsets.task.itk_self = 0x9c;
+            kinfo->offsets.task.itk_seatbelt = 0x160;
+            kinfo->offsets.proc.next = 0x4;
+            kinfo->offsets.proc.pid = 0x8;
+            kinfo->offsets.proc.task = 0xc;
+            kinfo->offsets.proc.lock_type = 0x44;
+            kinfo->offsets.proc.p_stat = 0x48;
+            kinfo->offsets.ipc_port.ip_references = 0x4;
+            break;
+        case 4:
+            kinfo->offsets.task.ref_count = 0xc;
+            kinfo->offsets.task.itk_self = 0x9c;
+            kinfo->offsets.task.itk_seatbelt = 0x160;
+            kinfo->offsets.proc.next = 0x4;
+            kinfo->offsets.proc.pid = 0x8;
+            kinfo->offsets.proc.task = 0xc;
+            kinfo->offsets.proc.lock_type = 0x44;
+            kinfo->offsets.proc.p_stat = 0x48;
+            kinfo->offsets.ipc_port.ip_references = 0x4;
+            break;
+        case 3:
+            kinfo->offsets.task.ref_count = 0xc;
+            kinfo->offsets.task.itk_self = 0x98;
+            kinfo->offsets.task.itk_seatbelt = 0x15c;
+            kinfo->offsets.proc.next = 0x4;
+            kinfo->offsets.proc.pid = 0x8;
+            kinfo->offsets.proc.task = 0xc;
+            kinfo->offsets.proc.lock_type = 0x44;
+            kinfo->offsets.proc.p_stat = 0x48;
+            kinfo->offsets.ipc_port.ip_references = 0x0;
+            break;
+        default:
+            break;
     }
-    return off;
-}
-
-uint32_t task_alloc(mach_port_t task, uint32_t size) {
-    mach_vm_address_t addr = 0;
-    mach_vm_allocate(task, &addr, size, VM_FLAGS_ANYWHERE);
-    return (uint32_t)addr;
-}
-
-uint32_t task_free(mach_port_t task, uint32_t addr, uint32_t size) {
-    mach_vm_deallocate(task, addr, size);
-    return (uint32_t)addr;
-}
-
-kern_return_t io_connect_set_notification_port_copy_send(mach_port_t connect, uint32_t type, mach_port_t port, uint32_t ref) {
-    union {
-        set_notification_request_t input;
-        set_notification_reply_t output;
-    } msg;
-    
-    msg.input.Head.msgh_bits = MACH_MSGH_BITS_COMPLEX | MACH_MSGH_BITS(19, MACH_MSG_TYPE_MAKE_SEND_ONCE);
-    msg.input.Head.msgh_remote_port = connect;
-    msg.input.Head.msgh_local_port = mig_get_reply_port();
-    msg.input.Head.msgh_id = 2818;
-    msg.input.Head.msgh_reserved = 0;
-    msg.input.msgh_body.msgh_descriptor_count= 1;
-    
-    msg.input.port.name = port;
-    msg.input.port.disposition = MACH_MSG_TYPE_COPY_SEND;
-    msg.input.port.type = MACH_MSG_PORT_DESCRIPTOR;
-    msg.input.NDR = NDR_record;
-    msg.input.notification_type = type;
-    msg.input.reference = ref;
-    
-    return mach_msg(&msg.input.Head, 3, 0x38, 0x2c, msg.input.Head.msgh_local_port, 0, 0);
+    return 0;
 }
