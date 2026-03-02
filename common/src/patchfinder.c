@@ -877,3 +877,363 @@ uint32_t find_p_bootargs(uint32_t region, uint8_t *kdata, size_t ksize) {
     if (!pe_state) return 0;
     return pe_state + 0x70;
 }
+
+uint32_t find_cs_enforcement_ios_5(uint32_t region, uint8_t *kdata, size_t ksize) {
+    const uint8_t search[] = {
+        0xa2, 0x6a, // ldr r2, [r4, #0x28]
+        0x1b, 0x68, // ldr r3, [r3]
+        0x00, 0x2b, // cmp r3, #0
+        0x04, 0xbf  // itt eq
+    };
+
+    /*
+        patch: ldr r3, [r3] --> movs r3, #1 (0x0123)
+    */
+
+    uint16_t *loc = memmem(kdata, ksize, search, sizeof(search));
+    if (loc == NULL) return 0;
+    return ((uintptr_t)loc) - ((uintptr_t)kdata) + 0x2;
+}
+
+uint32_t find_vm_map_enter_patch_ios_5(uint32_t region, uint8_t *kdata, size_t ksize) {
+    const uint8_t search[] = {
+        0x06, 0x28, // cmp r0, #6
+        0x04, 0xbf, // itt eq
+        0x19, 0x98, // ldreq r0, [sp, #0x64]
+        0x00, 0x28  // cmpeq r0, #0
+    };
+
+    /*
+        patch: cmp r0, #6 --> cmp r0, #0xff (0xff28)
+    */
+
+    uint16_t *loc = memmem(kdata, ksize, search, sizeof(search));
+    if (loc == NULL) return 0;
+    return ((uintptr_t)loc) - ((uintptr_t)kdata);
+}
+
+uint32_t find_tfp0_patch_ios_5(uint32_t region, uint8_t *kdata, size_t ksize) {
+    const uint8_t search[] = {
+        0x01, 0x91, // str r1, [sp, #4]
+        0x06, 0xd1, // bne #0x12
+        0x02, 0xa8, // add r0, sp, #8
+        0x41, 0x46  // mov r1, r8
+    };
+
+    /*
+        patch: bne #0x12 --> b #0x10 (0x06e0)
+    */
+
+    uint16_t *loc = memmem(kdata, ksize, search, sizeof(search));
+    if (loc == NULL) return 0;
+    return ((uintptr_t)loc) - ((uintptr_t)kdata) + 0x2;
+}
+
+uint32_t find_i_can_has_debugger_ios_5(uint32_t region, uint8_t *kdata, size_t ksize) {
+    const uint8_t search[] = {
+        0x09, 0x68, // ldr r1, [r1]
+        0x01, 0x60, // str r1, [r0]
+        0x01, 0x48, // ldr r0, [pc, #4]
+        0x00, 0x68, // ldr r0, [r0]
+        0x70, 0x47  // bx lr
+    };
+
+    /*
+        patch: ldr r0, [r0] --> movs r0, #1 (0x0120)
+    */
+
+    uint16_t *loc = memmem(kdata, ksize, search, sizeof(search));
+    if (loc == NULL) return 0;
+    return ((uintptr_t)loc) - ((uintptr_t)kdata) + 0x6;
+}
+
+uint32_t find_amfi_patch_ios_5(uint32_t region, uint8_t *kdata, size_t ksize) {
+    const uint8_t search[] = {
+        0xd0, 0x47, // blx r10
+        0x01, 0x21, // movs r1, #1
+        0x40, 0xb1, // cbz r0, #0x14 
+        0x13, 0x35  // adds r5, #0x13 
+    };
+
+    /*
+        patch: blx r10 --> movs r0, #0 (0x0020)
+    */
+
+    uint16_t *loc = memmem(kdata, ksize, search, sizeof(search));
+    if (loc == NULL) return 0;
+    return ((uintptr_t)loc) - ((uintptr_t)kdata);
+}
+
+uint32_t find_amfi_kill_patch_ios_5(uint32_t region, uint8_t *kdata, size_t ksize) {
+    const uint8_t search[] ={
+        0x09, 0x21, // movs r1, #9
+        0xba, 0x4a, // ldr r2, [pc, #0x2e8]
+        0x28, 0x46, // mov r0, r5
+        0x90, 0x47, // blx r2 
+        0x19, 0xe1, // b #0x23e
+        0x4f, 0xf0, // mov.w r2, #-1 (T32)
+        0xff, 0x32  // ...
+    };
+
+    /*
+        patch: blx r2 --> mov r8, r8 (0xc046)
+    */
+
+    uint16_t *loc = memmem(kdata, ksize, search, sizeof(search));
+    if (loc == NULL) return 0;
+    return ((uintptr_t)loc) - ((uintptr_t)kdata) + 0x6;
+}
+
+
+uint32_t find_sb_patch_ios_5(uint32_t region, uint8_t *kdata, size_t ksize) {
+    const uint8_t search[] = {
+        0x00, 0x78, // ldrb r0, [r0]
+        0x10, 0xf0, // tst.w r0, #4 (T32)
+        0x04, 0x0f, // ...
+        0x04, 0xd0  // beq #0x12
+    };
+
+    /*
+        patch: tst.w r0, #4 --> movs r3, #1, movs r3, #1 (0x01230123)
+    */
+
+    uint16_t *loc = memmem(kdata, ksize, search, sizeof(search));
+    if (loc == NULL) return 0;
+    return ((uintptr_t)loc) - ((uintptr_t)kdata) + 0x2;
+}
+
+uint32_t find_signature_check_ios_5(uint32_t region, uint8_t *kdata, size_t ksize) {
+    const uint8_t search[] = {
+        0xE0, 0x47, // blx r12
+        0x00, 0x21, // movs r1, #0
+        0x00, 0x28, // cmp r0, E0
+        0x08, 0xBF, // it eq
+        0x4f, 0xf0, // moveq.w r1, #-1 (T32)
+        0xff, 0x31  // ...
+        // sub.w rX, rX, #xyz
+        // mov r0, r1
+    };
+
+
+    /*
+        patch:  mov r0, r1 --> movs r0, #0 (0x0020)
+    */
+
+    uint16_t *loc = memmem(kdata, ksize, search, sizeof(search));
+    if (loc == NULL) return 0;
+    return ((uintptr_t)loc) - ((uintptr_t)kdata) + sizeof(search) + 0x4;
+}
+
+
+
+
+uint32_t find_tfp0_patch_ios_4(uint32_t region, uint8_t *kdata, size_t ksize) {
+    uint8_t bytes[] = {
+        0x00, 0x23, // movs r3, #0
+        0x02, 0x93, // str r3, [sp, #8]
+        0x01, 0x93, // str r3, [sp, #4]
+        0x5c, 0xb9, // cbnz r4, #0x20
+        0x02, 0xa8  // add r0, sp, #8
+    };
+
+
+    uint16_t *loc = memmem(kdata, ksize, bytes, sizeof(bytes));
+    if (loc == NULL) return 0;
+    return ((uintptr_t)loc) - ((uintptr_t)kdata) + 0xa;
+}
+
+
+uint32_t find_vm_map_enter_patch_ios_4(uint32_t region, uint8_t *kdata, size_t ksize) {
+    const struct find_search_mask search_masks[] = {
+        { 0xFFF0, 0x9310 }, // str r3, [sp, #0x...]
+        { 0xFF00, 0xD100 }, // bne #0x...
+        { 0xFFF0, 0xF010 }, // tst.w r?, #2 (T32)
+        { 0xFFFF, 0x0F02 }, // ...
+    };
+
+    const struct find_search_mask search_masks_alt[] = {
+        { 0x00FF, 0x0018 }, // asrs r0, r3, #0x...
+        { 0xFF00, 0xBB00 }, // cbnz r3, #0x...
+        { 0xFFF0, 0xF010 }, // tst.w r?, #2 (T32)
+        { 0xFFFF, 0x0F02 }, // ...
+    };
+    
+    uint16_t *loc = find_with_search_mask(region, kdata, ksize, sizeof(search_masks) / sizeof(*search_masks), search_masks);
+    if (loc != NULL) return ((uintptr_t)loc) - ((uintptr_t)kdata) + 0x8;
+
+    loc = find_with_search_mask(region, kdata, ksize, sizeof(search_masks_alt) / sizeof(*search_masks_alt), search_masks_alt);
+    if (loc == NULL) return 0;
+    return ((uintptr_t)loc) - ((uintptr_t)kdata) + 0x8;
+}
+
+uint32_t find_vm_map_protect_patch_ios_4(uint32_t region, uint8_t *kdata, size_t ksize) {
+    uint8_t *str = memmem(kdata, ksize, "vm_map_protect", sizeof("vm_map_protect"));
+    if (!str) return 0;
+    
+    uint32_t search[2] = {
+        0xFFFFF000,
+        (uintptr_t)str - (uintptr_t)kdata + 0x80001000,
+    };
+
+    uint8_t bic[] = {
+        0x25, 0xf0, // bic.w r5, r5, #4 (T32)
+        0x04, 0x05, // ...
+    };
+
+    uint16_t *loc = memmem(kdata, ksize, search, sizeof(search));
+    if (loc == NULL) return 0;
+
+    loc = memmem(loc-0x200, 0x1000, bic, sizeof(bic));
+    if (loc == NULL) return 0;
+    return ((uintptr_t)loc) - ((uintptr_t)kdata);
+}
+
+uint32_t find_i_can_has_debugger_ios_4(uint32_t region, uint8_t *kdata, size_t ksize) {
+    uint8_t bytes[] = {
+        0x48, 0xb1, // cbz r0, #0x16
+        0x06, 0x4a, // ldr r2, [pc, #0x18]
+        0x13, 0x68, // ldr r3, [r2]
+        0x13, 0xb9  // cbnz r3, #0xe
+    };
+
+    uint16_t *loc = memmem(kdata, ksize, bytes, sizeof(bytes));
+    if (loc == NULL) return 0;
+    uint32_t *offset = (uint32_t *)((uint8_t *)loc + 0x4 + 0x18);
+    return offset[0];
+}
+
+uint32_t find_cs_enforcement_ios_4(uint32_t region, uint8_t *kdata, size_t ksize) {
+    uint8_t bytes[] = {
+        0x1B, 0x09, // lsrs r3, r3, #4
+        0x03, 0xF0, // and.w r2, r3, #1 (T32)
+        0x01, 0x02, // ...
+        0xDF, 0xF8, // ldr.w r3, [pc, #0x4bc] (T32)
+        0xBC, 0x34, // ...
+        0x18, 0x68, // ldr r0, [r3]
+        0x00, 0x28, // cmp r0, #0
+        0x14, 0xBF  // ite ne
+    };
+
+    uint8_t bytes_4_2[] = {
+        0xD3, 0xF8, // ldr.w r2, [r3, #0x9c] (T32)
+        0x9C, 0x20, // ...
+        0xDF, 0xF8, // ldr.w r3, [pc, #0x5e4] (T32)
+        0xe4, 0x35, // ...
+        0x19, 0x68, // ldr r1, [r3]
+        0x00, 0x29, // cmp r1, #0
+        0x14, 0xBF  // ite ne
+    };
+
+    uint8_t bytes_4_0[] = {
+        0xD3, 0xF8, // ldr.w r2, [r3, #0x9c] (T32)
+        0x9C, 0x20, // ...
+        0xDF, 0xF8, // ldr.w r3, [pc, #0x5dc] (T32)
+        0xDC, 0x35, // ...
+        0x19, 0x68, // ldr r1, [r3]
+        0x00, 0x29, // cmp r1, #0
+        0x14, 0xBF  // ite ne
+    };
+
+    uint32_t *offset = NULL;
+    uint16_t *loc = memmem(kdata, ksize, bytes, sizeof(bytes));
+    if (loc != NULL) return *(uint32_t *)((uint8_t *)loc + 0xa + 0x4bc);
+
+    loc = memmem(kdata, ksize, bytes_4_2, sizeof(bytes_4_2));
+    if (loc != NULL) return *(uint32_t *)((uint8_t *)loc + 0x8 + 0x5e4);
+
+    loc = memmem(kdata, ksize, bytes_4_0, sizeof(bytes_4_0));
+    if (loc != NULL) return *(uint32_t *)((uint8_t *)loc + 0x8 + 0x5dc);
+    return 0;
+}
+
+uint32_t find_proc_enforce_ios_4(uint32_t region, uint8_t *kdata, size_t ksize) {
+    uint8_t bytes[] = {
+        0x21, 0x4B, // ldr r3, [pc, #0x84]
+        0x83, 0x46, // mov r11, r0
+        0x8A, 0x46, // mov r10, r1
+        0x18, 0x68, // ldr r0, [r3]
+        0x00, 0x28  // cmp r0, #0
+    };
+
+    uint16_t *loc = memmem(kdata, ksize, bytes, sizeof(bytes));
+    if (loc == NULL) return 0;
+
+    uint32_t *offset = (uint32_t *)((uint8_t *)loc + 0x4 + 0x84);
+    return offset[0];
+}
+
+uint32_t find_amfi_patch_ios_4(uint32_t region, uint8_t *kdata, size_t ksize) {
+    uint8_t bytes[] = {
+        0xF0, 0xB5, // push {r4, r5, r6, r7, lr}
+        0x03, 0xAF, // add r7, sp, #0xc
+        0x4D, 0xF8, // str r8, [sp, #-0x4]! (T32)
+        0x04, 0x8D, // ...
+        0x11, 0x4A, // ldr r2, [pc, #0x44]
+        0x03, 0x78, // ldrb r3, [r0]
+        0x80, 0x46, // mov r8, r0
+        0x00, 0x24, // movs r4, #0
+    };
+
+    uint8_t bytes_4_1[] = {
+        0x90, 0xB5, // push {r4, r7, lr}
+        0x01, 0xAF, // add r7, sp, #4
+        0x14, 0x29, // cmp r1, #0x14
+        0x22, 0xD1, // bne #0x48
+        0x12, 0x4A, // ldr r2, [pc, #0x48]
+        0x90, 0xF8, // ldrb.w r12, [r0] (T32)
+        0x00, 0xC0, // ...
+        0x32, 0xF8, // ldrh.w r3, [r2, ip, lsl #1] (T32)
+        0x1C, 0x30  // ..
+    };
+
+    uint8_t bytes_4_0[] = {
+        0x90, 0xB5, // push {r4, r7, lr}
+        0x01, 0xAF, // add r7, sp, #4
+        0x14, 0x29, // cmp r1, #0x14
+        0x24, 0xD1, // bne #0x52
+        0x13, 0x4A, // ldr r2, [pc, #0x4c]
+        0x90, 0xF8, // ldrb.w r12, [r0] (T32)
+        0x00, 0xC0, // ...
+        0x00, 0xF1, // add.w lr, r0, #1 (T32)
+        0x01, 0x0E  // ..
+    };
+
+    uint16_t *loc = memmem(kdata, ksize, bytes, sizeof(bytes));
+    if (loc != NULL) return ((uintptr_t)loc) - ((uintptr_t)kdata);
+
+    loc = memmem(kdata, ksize, bytes_4_1, sizeof(bytes_4_1));
+    if (loc != NULL) return ((uintptr_t)loc) - ((uintptr_t)kdata);
+    
+    loc = memmem(kdata, ksize, bytes_4_0, sizeof(bytes_4_0));
+    if (loc != NULL) return ((uintptr_t)loc) - ((uintptr_t)kdata);
+    return 0;
+}
+
+
+uint32_t find_sb_patch_ios_4(uint32_t region, uint8_t *kdata, size_t ksize) {
+        uint8_t bytes[] = {
+        0x1B, 0x68, // ldr r3, [r3]
+        0x13, 0xF0, // tst.w r3, #4 (T32)
+        0x04, 0x0f, // ...
+        0x04, 0xD0, // beq #0x12
+        0x51, 0x46  // mov r1, sl
+    };
+
+    uint8_t bytes_4_0[] = {
+        0xFF, 0xF7, // bl #0x... (T32)
+        0x54, 0xFF, // ...
+        0x10, 0xF0, // tst.w r0, #4 (T32)
+        0x04, 0x0F, // ...
+        0x06, 0xD0, // beq #0x18
+        0x42, 0x9B, // ldr r3, [sp, #0x108]
+        0x23, 0xB1  // cbz r3, #0x18
+    };
+
+    uint32_t offset = 0;
+    uint16_t *loc = memmem(kdata, ksize, bytes, sizeof(bytes));
+    if (loc != NULL) return ((uintptr_t)loc) - ((uintptr_t)kdata) + 0x2;
+    
+    loc = memmem(kdata, ksize, bytes_4_0, sizeof(bytes_4_0));
+    if (loc != NULL) return ((uintptr_t)loc) - ((uintptr_t)kdata) + 0x4;    
+    return 0;
+}

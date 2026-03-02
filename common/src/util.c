@@ -10,17 +10,36 @@ mach_port_t (*__IOServiceGetMatchingService)(mach_port_t, CFDictionaryRef) = NUL
 int (*__IOMobileFramebufferOpen)(mach_port_t, mach_port_t, uint32_t, void *) = NULL;
 int (*__IOMobileFramebufferGetLayerDefaultSurface)(mach_port_t, int, void *) = NULL;
 
+static bool first_log = true;
 void print_log(const char *fmt, ...) {
     static bool log_opened;
     if (!log_opened) {
         openlog("aquila", LOG_PID | LOG_CONS, LOG_USER);
         log_opened = true;
     }
+
+    if (first_log) {
+        unlink("/private/var/mobile/Media/aquila_log.txt");
+        first_log = false;
+    }
+
+    FILE *log_file = NULL;
+    if (access("/private/var/mobile/Media/aquila_log.txt", F_OK) != 0) {
+        log_file = fopen("/private/var/mobile/Media/aquila_log.txt", "w+");
+    } else {
+        log_file = fopen("/private/var/mobile/Media/aquila_log.txt", "a");
+    }
     
     va_list va;
     va_start(va, fmt);
     vsyslog(LOG_ERR, fmt, va);
     vfprintf(stderr, fmt, va);
+    if (log_file != NULL) {
+        vfprintf(log_file, fmt, va);
+        fflush(log_file);
+        fclose(log_file);
+        sync();
+    }
     va_end(va);
 }
 
@@ -112,6 +131,7 @@ int init_offsets(void) {
             kinfo->offsets.proc.lock_type = 0x48;
             kinfo->offsets.proc.p_stat = 0x4c;
             kinfo->offsets.ipc_port.ip_references = 0x4;
+            kinfo->offsets.ipc_port.ip_kobject = 0x48;
             break;
         case 9:
             kinfo->offsets.task.ref_count = 0xc;
@@ -123,6 +143,7 @@ int init_offsets(void) {
             kinfo->offsets.proc.lock_type = 0x4c;
             kinfo->offsets.proc.p_stat = 0x50;
             kinfo->offsets.ipc_port.ip_references = 0x4;
+            kinfo->offsets.ipc_port.ip_kobject = 0x50;
             break;
         case 8:
             kinfo->offsets.task.ref_count = 0xc;
@@ -134,6 +155,7 @@ int init_offsets(void) {
             kinfo->offsets.proc.lock_type = 0x4c;
             kinfo->offsets.proc.p_stat = 0x50;
             kinfo->offsets.ipc_port.ip_references = 0x4;
+            kinfo->offsets.ipc_port.ip_kobject = 0x44;
             break;
         case 7:
             kinfo->offsets.task.ref_count = 0xc;
@@ -145,6 +167,7 @@ int init_offsets(void) {
             kinfo->offsets.proc.lock_type = 0x4c;
             kinfo->offsets.proc.p_stat = 0x50;
             kinfo->offsets.ipc_port.ip_references = 0x4;
+            kinfo->offsets.ipc_port.ip_kobject = 0x44;
             break;
         case 6:
             kinfo->offsets.task.ref_count = 0xc;
@@ -156,6 +179,7 @@ int init_offsets(void) {
             kinfo->offsets.proc.lock_type = 0x44;
             kinfo->offsets.proc.p_stat = 0x48;
             kinfo->offsets.ipc_port.ip_references = 0x4;
+            kinfo->offsets.ipc_port.ip_kobject = 0x44;
             break;
         case 5:
             kinfo->offsets.task.ref_count = 0xc;
@@ -167,6 +191,7 @@ int init_offsets(void) {
             kinfo->offsets.proc.lock_type = 0x44;
             kinfo->offsets.proc.p_stat = 0x48;
             kinfo->offsets.ipc_port.ip_references = 0x4;
+            kinfo->offsets.ipc_port.ip_kobject = 0x40;
             break;
         case 4:
             kinfo->offsets.task.ref_count = 0xc;
@@ -178,6 +203,7 @@ int init_offsets(void) {
             kinfo->offsets.proc.lock_type = 0x44;
             kinfo->offsets.proc.p_stat = 0x48;
             kinfo->offsets.ipc_port.ip_references = 0x4;
+            kinfo->offsets.ipc_port.ip_kobject = 0x40;
             break;
         case 3:
             kinfo->offsets.task.ref_count = 0xc;
@@ -189,6 +215,7 @@ int init_offsets(void) {
             kinfo->offsets.proc.lock_type = 0x44;
             kinfo->offsets.proc.p_stat = 0x48;
             kinfo->offsets.ipc_port.ip_references = 0x0;
+            kinfo->offsets.ipc_port.ip_kobject = 0x40;
             break;
         default:
             break;

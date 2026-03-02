@@ -55,3 +55,11 @@ bins/aquila
 cli/macos/aquila
 /.vscode
 cli/macos/aquila
+untether/aquila
+untether/.DS_Store
+resources/.DS_Store
+installer/.DS_Store
+common/.DS_Store
+cli/.DS_Store
+cli/aquila
+cli/macos/aquila

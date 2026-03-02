@@ -1,7 +1,7 @@
 clean:
 	$(MAKE) -C untether clean
 	$(MAKE) -C installer clean
-	$(MAKE) -C cli/macos clean
+	$(MAKE) -C cli clean
 	@rm -rf ./resources/payload.dmg
 
 all: clean
@@ -9,4 +9,4 @@ all: clean
 	$(MAKE) -C installer
 
 	cd ./resources && ./create_payload.sh
-	$(MAKE) -C cli/macos
+	$(MAKE) -C cli

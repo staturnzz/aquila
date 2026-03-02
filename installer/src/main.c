@@ -18,7 +18,7 @@ int load_run_commands(void) {
     while ((entry = readdir(dir)) != NULL) {
         if (strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0) continue;
         bzero(path_buf, PATH_MAX);
-        snprintf(path_buf, PATH_MAX, "/etc/rc.d/%s", entry->d_name);
+        snprintf(path_buf, PATH_MAX-1, "/etc/rc.d/%s", entry->d_name);
 
         pid_t pid = -1;
         int rv = posix_spawn(&pid, path_buf, NULL, NULL, args, environ);
@@ -47,7 +47,48 @@ int load_user_daemons(void) {
     return status;
 }
 
+int launchctl_unsetenv(void) {
+    char **args = calloc(1, sizeof(char *) * 4);
+    args[0] = "/bin/launchctl";
+    args[1] = "unsetenv";
+    args[2] = "DYLD_INSERT_LIBRARIES";
+    args[3] = NULL;
+
+    pid_t pid = -1;
+    int status = -1;
+    int rv = posix_spawn(&pid, "/bin/launchctl", NULL, NULL, args, NULL);
+    if (rv != 0 || pid == -1) goto done;
+    
+    do { if (waitpid(pid, &status, 0) == -1) goto done; }
+    while (!WIFEXITED(status) && !WIFSIGNALED(status));
+
+done:
+    free(args);
+    return status;
+}
+
 int start_daemons(void) {
+    launchctl_unsetenv();
+    DIR *dir = opendir("/Library/LaunchDaemons");
+    if (dir == NULL) return -1;
+
+    struct dirent *entry = NULL;
+    char path_buf[PATH_MAX] = {0};
+
+    while ((entry = readdir(dir)) != NULL) {
+        if (strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0) continue;
+        if (strstr(entry->d_name, ".plist") == NULL) continue;
+
+        bzero(path_buf, PATH_MAX);
+        snprintf(path_buf, PATH_MAX, "/Library/LaunchDaemons/%s", entry->d_name);
+        
+        chmod(path_buf, 0644);
+        chown(path_buf, 0, 0);
+    }
+
+    closedir(dir);
+    sync();
+
     load_run_commands();
     load_user_daemons();
 

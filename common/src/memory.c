@@ -4,23 +4,23 @@
 #include "memory.h"
 
 uint8_t *map_data(uint32_t pa, uint32_t size, vm_prot_t prot) {
-    bool write_prot = ((prot & VM_PROT_WRITE) == VM_PROT_WRITE);
+    bool no_cache = ((prot & VM_PROT_WRITE) == VM_PROT_WRITE) && kinfo->version[0] >= 6;
     uint32_t map_offset = (pa & ~0xfff) - kinfo->mapping_base;
     mach_vm_address_t mapped = 0;
-    uint32_t flags = VM_FLAGS_ANYWHERE | (write_prot ? VM_FLAGS_NO_CACHE : 0);
+    uint32_t flags = VM_FLAGS_ANYWHERE | (no_cache ? VM_FLAGS_NO_CACHE : 0);
     
     if (mach_vm_map(mach_task_self(), &mapped, size, 0, flags, kinfo->oob_entry, map_offset, 0, prot, prot, 0) != 0) return NULL;
-    if (write_prot) mem_sync();
+    if (no_cache) mem_sync();
     return (uint8_t *)mapped;
 }
 
 uint8_t *map_relative_data(uint32_t offset, uint32_t size, vm_prot_t prot) {
-    bool write_prot = ((prot & VM_PROT_WRITE) == VM_PROT_WRITE);
+    bool no_cache = ((prot & VM_PROT_WRITE) == VM_PROT_WRITE) && kinfo->version[0] >= 6;
     mach_vm_address_t mapped = 0;
-    uint32_t flags = VM_FLAGS_ANYWHERE | (write_prot ? VM_FLAGS_NO_CACHE : 0);
+    uint32_t flags = VM_FLAGS_ANYWHERE | (no_cache ? VM_FLAGS_NO_CACHE : 0);
 
     if (mach_vm_map(mach_task_self(), &mapped, size, 0, flags, kinfo->oob_entry, offset, 0, prot, prot, 0) != 0) return NULL;
-    if (write_prot) mem_sync();
+    if (no_cache) mem_sync();
     return (uint8_t *)mapped;
 }
 

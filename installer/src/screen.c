@@ -80,6 +80,9 @@ int draw_splash_screen(const char *path) {
     if ((ctx = CGBitmapContextCreate(base, size.width, size.height, 8, bytes, colorspace, flags)) == NULL) goto done;
     CGContextDrawImage(ctx, final_frame, cg_image);
     CGColorSpaceRelease(colorspace);
+
+    usleep(1000000);
+    sync();
     rv = 0;
 
 done:

