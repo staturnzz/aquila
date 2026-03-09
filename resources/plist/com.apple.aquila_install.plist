@@ -4,16 +4,11 @@
 	<dict>
 		<key>AllowUnauthenticatedServices</key>
 		<true/>
-		<key>EnvironmentVariables</key>
-		<dict>
-			<key>PATH</key>
-			<string>/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin</string>
-		</dict>
 		<key>Label</key>
-		<string>haxx.aquila.housekeeping</string>
+		<string>com.apple.aquila_install</string>
 		<key>ProgramArguments</key>
 		<array>
-			<string>/usr/libexec/CrashHousekeeping</string>
+			<string>/Developer/installer</string>
 		</array>
 		<key>UserName</key>
 		<string>root</string>

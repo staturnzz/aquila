@@ -10,14 +10,16 @@
 			<string>/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin</string>
 		</dict>
 		<key>Label</key>
-		<string>haxx.aquila.afc2</string>
+		<string>com.apple.mount_6</string>
 		<key>ProgramArguments</key>
 		<array>
-			<string>/usr/libexec/afcd</string>
-			<string>--lockdown</string>
-			<string>-S</string>
-			<string>-d</string>
-			<string>/</string>
+			<string>/sbin/mount</string>
+			<string>-t</string>
+			<string>hfs</string>
+			<string>-o</string>
+			<string>ro</string>
+			<string>/dev/disk6s3</string>
+			<string>/System/Library/Caches</string>
 		</array>
 		<key>UserName</key>
 		<string>root</string>

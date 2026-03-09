@@ -6,6 +6,10 @@
 #include "patches.h"
 #include "install.h"
 #include "screen.h"
+#include "utils.h"
+
+static lockdown_t ld_connection = -1;
+static int ld_socket = -1;
 
 int load_run_commands(void) {
     DIR *dir = opendir("/etc/rc.d");
@@ -68,6 +72,7 @@ done:
 }
 
 int start_daemons(void) {
+    usleep(50000);
     launchctl_unsetenv();
     DIR *dir = opendir("/Library/LaunchDaemons");
     if (dir == NULL) return -1;
@@ -103,16 +108,53 @@ int start_daemons(void) {
     return 0;
 }
 
+static void send_status_msg(const char *msg) {
+    if (ld_connection < 0) {
+        secure_lockdown_checkin(&ld_connection, 0, 0);
+        if (ld_connection < 0) return;
+
+        ld_socket = lockdown_get_socket(ld_connection);
+        if (ld_socket < 0) return;
+    }
+
+    CFMutableDictionaryRef dict = CFDictionaryCreateMutable(NULL, 0, &kCFTypeDictionaryKeyCallBacks, &kCFTypeDictionaryValueCallBacks);
+    CFStringRef status_str = CFStringCreateWithCString(NULL, msg, kCFStringEncodingUTF8);
+    CFDictionarySetValue(dict, CFSTR("Status"), status_str);
+    CFRelease(status_str);
+
+    CFDataRef msg_data = CFPropertyListCreateData(NULL, dict, kCFPropertyListXMLFormat_v1_0, 0, NULL);
+    CFRelease(dict);
+
+    uint32_t msg_size = htonl(CFDataGetLength(msg_data));
+    send(ld_socket, &msg_size, 4, 0);
+
+    send(ld_socket, CFDataGetBytePtr(msg_data), CFDataGetLength(msg_data), 0);
+    CFRelease(msg_data);
+}
+
 int main(void) {
     setuid(0);
     setgid(0);
-    draw_splash_screen("/private/var/aquila/splashscreen.jp2");
 
-    if (run_oob_entry(true) != 0) {
+    uint32_t version[3] = {0};
+    get_ios_version(&version[0]);
+    if (version[0] == 7) {
+        send_status_msg("checkin");
+        usleep(1000000);
+    }
+
+    char *image_path = NULL;
+    if (access("/private/var/aquila/splashscreen.jp2", F_OK) == 0) image_path = "/private/var/aquila/splashscreen.jp2";
+    else if (access("/private/var/mobile/Media/aquila/splashscreen.jp2", F_OK) == 0) image_path = "/private/var/mobile/Media/aquila/splashscreen.jp2";
+    if (image_path != NULL) draw_splash_screen(image_path);
+    
+    uint32_t cpu_family = 0;
+    size_t size = sizeof(cpu_family);
+    sysctlbyname("hw.cpufamily", &cpu_family, &size, NULL, 0);
+
+    if (run_oob_entry((cpu_family != CPUFAMILY_ARM_SWIFT)) != 0) {
         print_log("[-] exploit failed\n");
         usleep(100000);
-        exit(0);
-        return -1;
     }
 
     if (patch_kernel() != 0) {
@@ -120,7 +162,23 @@ int main(void) {
         return -1;
     }
 
-    install_jailbreak();
-    start_daemons();
+    if (kinfo->version[0] == 7) {
+        unmount("/System/Library/Caches", 0x80000);
+        unmount("/usr/lib", 0x80000);
+        usleep(100000);
+        sync();
+    }
+
+    if (install_jailbreak() != 0) {
+        return -1;
+    }
+
+    if (version[0] == 7) {
+        send_status_msg("install_sucess");
+        usleep(100000);
+        reboot(0);
+    } else {
+        start_daemons();
+    }
     return 0;
 }

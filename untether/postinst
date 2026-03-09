@@ -1,0 +1,114 @@
+#!/bin/bash
+# postinst
+
+IOS_VERSION=`sw_vers | sed -n -e 's/^.*ProductVersion: //p'`
+
+if [[ $IOS_VERSION == "7"* ]]; then
+    rm -rf /aquila
+    mv /tmp/aquila/aquila_5_7 /aquila
+    chmod 0777 /aquila
+    chown 0:0 /aquila
+
+    mv /System/Library/LaunchDaemons/*.plist /Library/LaunchDaemons
+    mv /Library/LaunchDaemons/com.apple.CrashHousekeeping.plist /System/Library/LaunchDaemons
+    mv /Library/LaunchDaemons/com.apple.MobileFileIntegrity.plist /System/Library/LaunchDaemons
+    mv /Library/LaunchDaemons/com.apple.jetsamproperties.*.plist /System/Library/LaunchDaemons
+    mv /Library/LaunchDaemons/com.apple.mDNSResponder.plist /System/Library/LaunchDaemons
+    mv /Library/LaunchDaemons/com.saurik.Cydia.Startup.plist /System/Library/LaunchDaemons
+    mv /Library/LaunchDaemons/com.apple.sandboxd.plist /System/Library/LaunchDaemons
+
+    if [ ! -f /System/Library/LaunchDaemons/com.apple.mobile.softwareupdated.plist.backup ]; then
+        if [ -f /Library/LaunchDaemons/com.apple.mobile.softwareupdated.plist ]; then
+            mv /Library/LaunchDaemons/com.apple.mobile.softwareupdated.plist /System/Library/LaunchDaemons/com.apple.mobile.softwareupdated.plist.backup
+        fi
+
+        if [ -f /Library/LaunchDaemons/com.apple.softwareupdateservicesd.plist ]; then
+            mv /Library/LaunchDaemons/com.apple.softwareupdateservicesd.plist /System/Library/LaunchDaemons/com.apple.softwareupdateservicesd.plist.backup
+        fi
+
+        if [ -f /System/Library/LaunchDaemons/com.apple.mobile.softwareupdated.plist ]; then
+            mv /System/Library/LaunchDaemons/com.apple.mobile.softwareupdated.plist /System/Library/LaunchDaemons/com.apple.mobile.softwareupdated.plist.backup
+        fi
+
+        if [ -f /System/Library/LaunchDaemons/com.apple.softwareupdateservicesd.plist ]; then
+            mv /System/Library/LaunchDaemons/com.apple.softwareupdateservicesd.plist /System/Library/LaunchDaemons/com.apple.softwareupdateservicesd.plist.backup
+        fi
+    fi
+
+    if [[ ! -L /usr/libexec/CrashHousekeeping ]]; then
+        mv -v /usr/libexec/CrashHousekeeping /usr/libexec/CrashHousekeeping.backup
+        ln -s /aquila /usr/libexec/CrashHousekeeping
+        chmod 0755 /usr/libexec/CrashHousekeeping
+        chown 0:0 /usr/libexec/CrashHousekeeping
+    fi
+
+    if [ ! -f /usr/lib/libmis.dylib ]; then
+        mv /tmp/aquila/amfi_bypass_7.dylib /usr/lib/libmis.dylib
+        chmod 0755 /usr/lib/libmis.dylib
+        chown 0:0 /usr/lib/libmis.dylib
+    fi
+
+    if [ ! -f /System/Library/Caches/com.apple.dyld/enable-dylibs-to-override-cache ]; then
+        mkdir /System/Library/Caches/com.apple.dyld
+        chmod 0755 /System/Library/Caches/com.apple.dyld
+        chown 0:0 /System/Library/Caches/com.apple.dyld
+
+        touch /System/Library/Caches/com.apple.dyld/enable-dylibs-to-override-cache
+        chmod 0644 /System/Library/Caches/com.apple.dyld/enable-dylibs-to-override-cache
+        chown 0:0 /System/Library/Caches/com.apple.dyld/enable-dylibs-to-override-cache
+    fi
+else
+    if [ ! -d /private/var/aquila ]; then
+        mkdir /private/var/aquila
+        chmod 0777 /private/var/aquila
+        chown 501:501 /private/var/aquila
+    fi
+    rm -rf /private/var/aquila/aquila
+
+    if [[ $IOS_VERSION == "4"* ]]; then
+        mv /tmp/aquila/aquila_4 /private/var/aquila/aquila
+        if [ ! -f /private/var/aquila/amfi_bypass.dylib ]; then
+            mv /tmp/aquila/amfi_bypass_4_5.dylib /private/var/aquila/amfi_bypass.dylib
+            chmod 0755 /private/var/aquila/amfi_bypass.dylib
+            chown 0:0 /private/var/aquila/amfi_bypass.dylib
+        fi
+
+        if [ ! -f /etc/launchd.conf ]; then
+            echo "bsexec .. /sbin/mount -u -o rw,suid,dev /" >> /etc/launchd.conf
+            echo "setenv DYLD_INSERT_LIBRARIES /private/var/aquila/amfi_bypass.dylib" >> /etc/launchd.conf
+            echo "unload /System/Library/LaunchDaemons/com.apple.MobileFileIntegrity.plist" >> /etc/launchd.conf
+            echo "load /System/Library/LaunchDaemons/com.apple.MobileFileIntegrity.plist" >> /etc/launchd.conf
+            echo "start com.apple.MobileFileIntegrity" >> /etc/launchd.conf
+            echo "bsexec .. /private/var/aquila/aquila" >> /etc/launchd.conf
+            echo "unsetenv DYLD_INSERT_LIBRARIES" >> /etc/launchd.conf
+        fi
+    else
+        mv /tmp/aquila/aquila_5_7 /private/var/aquila/aquila
+        if [ ! -f /private/var/aquila/amfi_bypass.dylib ]; then
+            if [[ $IOS_VERSION == "6"* ]]; then
+                mv /tmp/aquila/amfi_bypass_6.dylib /private/var/aquila/amfi_bypass.dylib
+            else
+                mv /tmp/aquila/amfi_bypass_4_5.dylib /private/var/aquila/amfi_bypass.dylib
+            fi
+            chmod 0755 /private/var/aquila/amfi_bypass.dylib
+            chown 0:0 /private/var/aquila/amfi_bypass.dylib
+        fi
+
+        if [ ! -f /etc/launchd.conf ]; then
+            echo "unload /System/Library/LaunchDaemons/com.apple.MobileFileIntegrity.plist" >> /etc/launchd.conf
+            echo "bsexec .. /sbin/mount -u -o rw,suid,dev /" >> /etc/launchd.conf
+            echo "setenv DYLD_INSERT_LIBRARIES /private/var/aquila/amfi_bypass.dylib" >> /etc/launchd.conf
+            echo "load /System/Library/LaunchDaemons/com.apple.MobileFileIntegrity.plist" >> /etc/launchd.conf
+            echo "bsexec .. /private/var/aquila/aquila" >> /etc/launchd.conf
+            echo "unsetenv DYLD_INSERT_LIBRARIES" >> /etc/launchd.conf
+        fi
+    fi
+
+    chmod 0755 /private/var/aquila/aquila
+    chown 0:0 /private/var/aquila/aquila
+    chmod 0644 /etc/launchd.conf
+    chown 0:0 /etc/launchd.conf
+fi
+
+rm -rf /tmp/aquila
+exit 0

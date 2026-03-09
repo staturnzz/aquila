@@ -11,6 +11,8 @@ int (*__IOMobileFramebufferOpen)(mach_port_t, mach_port_t, uint32_t, void *) = N
 int (*__IOMobileFramebufferGetLayerDefaultSurface)(mach_port_t, int, void *) = NULL;
 
 static bool first_log = true;
+static FILE *console_file = NULL;
+
 void print_log(const char *fmt, ...) {
     static bool log_opened;
     if (!log_opened) {
@@ -32,12 +34,23 @@ void print_log(const char *fmt, ...) {
     
     va_list va;
     va_start(va, fmt);
-    vsyslog(LOG_ERR, fmt, va);
+    vsyslog(LOG_CRIT, fmt, va);
     vfprintf(stderr, fmt, va);
+
     if (log_file != NULL) {
         vfprintf(log_file, fmt, va);
         fflush(log_file);
         fclose(log_file);
+        sync();
+    }
+
+    if (console_file == NULL) {
+        if ((console_file = fopen("/dev/console", "a")) == NULL) return;
+    }
+
+    if (console_file != NULL) {
+        vfprintf(log_file, fmt, va);
+        fflush(log_file);
         sync();
     }
     va_end(va);

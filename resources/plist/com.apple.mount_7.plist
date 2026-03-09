@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+	<dict>
+		<key>AllowUnauthenticatedServices</key>
+		<true/>
+		<key>EnvironmentVariables</key>
+		<dict>
+			<key>PATH</key>
+			<string>/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin</string>
+		</dict>
+		<key>Label</key>
+		<string>com.apple.mount_7</string>
+		<key>ProgramArguments</key>
+		<array>
+			<string>/sbin/mount</string>
+			<string>-t</string>
+			<string>hfs</string>
+			<string>-o</string>
+			<string>ro</string>
+			<string>/dev/disk7s3</string>
+			<string>/System/Library/Caches</string>
+		</array>
+		<key>UserName</key>
+		<string>root</string>
+	</dict>
+</plist>

@@ -1,0 +1,9 @@
+Package: com.staturnz.aquila
+Name: aquila untether
+Version: 2.1
+Architecture: iphoneos-arm
+Maintainer: staturnz
+Author: staturnz
+Section: Untether
+Priority: optional
+Description: aquila untether for iOS 4.3 - 7.1.2

@@ -61,7 +61,7 @@ L_allow:
 
 L_actually_eval:
     add     sp, #0x44
-    ldr     r0, [sp, #20]
+    ldr     r0, [sp, #0x14]
     mov     lr, r0
     ldr     r1, _sb_eval_hook_orig_addr
     mov     r9, r1

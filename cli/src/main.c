@@ -2,17 +2,20 @@
 #include "device.h"
 #include "afc.h"
 #include "jailbreak.h"
+#include "syslog.h"
 #include "util.h"
 
 uint16_t global_flags = FLAG_NONE;
 
 void print_help(void) {
-    fprintf(stdout, "Usage: aquila [-jaobvnch]\n");
+    fprintf(stdout, "Usage: aquila [-jfvisnrch]\n");
     fprintf(stdout, "   -j, --jailbreak \t\t install jailbreak (default)\n");
-    fprintf(stdout, "   -f, --force-install \t\t install/upgrade if already jailbroken\n");
+    fprintf(stdout, "   -f, --force-install \t\t allow (re)install if already jailbroken\n");
     fprintf(stdout, "   -v, --verbose \t\t enable verbose logging\n");
+    fprintf(stdout, "   -i, --install-log \t\t view install log\n");
+    fprintf(stdout, "   -s, --system-log \t\t view system log\n");
     fprintf(stdout, "   -n, --no-color \t\t disable color in logs\n");
-    fprintf(stdout, "   -l, --view-logs \t\t view device logs\n");
+    fprintf(stdout, "   -r, --reboot \t\t reboot the connected device\n");
     fprintf(stdout, "   -c, --credits \t\t print credits\n");
     fprintf(stdout, "   -h, --help \t\t\t print help\n\n");
     exit(0);
@@ -70,8 +73,10 @@ void parse_args(int argc, char **argv) {
                     case 'j': global_flags |= FLAG_JAILBREAK; break;
                     case 'f': global_flags |= FLAG_FORCE_INSTALL; break;
                     case 'v': global_flags |= FLAG_VERBOSE_LOGGING; break;
+                    case 'i': global_flags |= FLAG_INSTALL_LOG; break;
+                    case 's': global_flags |= FLAG_SYSTEM_LOG; break;
                     case 'n': global_flags |= FLAG_NO_COLOR; break;
-                    case 'l': global_flags |= FLAG_VIEW_LOGS; break;
+                    case 'r': global_flags |= FLAG_REBOOT; break;
                     case 'c': return print_credits();
                     default: return print_help();
                 }
@@ -82,10 +87,14 @@ void parse_args(int argc, char **argv) {
             global_flags |= FLAG_FORCE_INSTALL;
         } else if (strcmp(arg, "--verbose") == 0) {
             global_flags |= FLAG_VERBOSE_LOGGING;
+        } else if (strcmp(arg, "--install-log") == 0) {
+            global_flags |= FLAG_INSTALL_LOG;
+        } else if (strcmp(arg, "--system-log") == 0) {
+            global_flags |= FLAG_SYSTEM_LOG;
         } else if (strcmp(arg, "--no-color") == 0) {
             global_flags |= FLAG_NO_COLOR;
-        } else if (strcmp(arg, "--view-logs") == 0) {
-            global_flags |= FLAG_VIEW_LOGS;
+        } else if (strcmp(arg, "--reboot") == 0) {
+            global_flags |= FLAG_REBOOT;
         } else if (strcmp(arg, "--credits") == 0) {
             return print_credits();
         } else {
@@ -96,13 +105,15 @@ void parse_args(int argc, char **argv) {
     global_flags |= FLAG_JAILBREAK;
     set_color_mode();
 #else
-    const char *short_opts = "jfvnlch";
+    const char *short_opts = "jfvisnrch";
     struct option long_opts[] = {
         {"jailbreak", no_argument, 0, 'j'},
         {"force-install", no_argument, 0, 'f'},
         {"verbose", no_argument, 0, 'v'},
+        {"install-log", no_argument, 0, 'i'},
+        {"system-log", no_argument, 0, 's'},
         {"no-color", no_argument, 0, 'n'},
-        {"view-logs", no_argument, 0, 'l'},
+        {"reboot", no_argument, 0, 'r'},
         {"credits", no_argument, 0, 'c'},
         {"help", no_argument, 0, 'h'},
         {0, 0, 0, 0},
@@ -117,8 +128,10 @@ void parse_args(int argc, char **argv) {
             case 'j': global_flags |= FLAG_JAILBREAK; break;
             case 'f': global_flags |= FLAG_FORCE_INSTALL; break;
             case 'v': global_flags |= FLAG_VERBOSE_LOGGING; break;
+            case 'i': global_flags |= FLAG_INSTALL_LOG; break;
+            case 's': global_flags |= FLAG_SYSTEM_LOG; break;
             case 'n': global_flags |= FLAG_NO_COLOR; break;
-            case 'l': global_flags |= FLAG_VIEW_LOGS; break;
+            case 'r': global_flags |= FLAG_REBOOT; break;
             case 'c': return print_credits();
             case 'h': return print_help();
             case '?': return print_help();
@@ -133,21 +146,18 @@ void parse_args(int argc, char **argv) {
 }
 
 bool is_device_supported(device_info_t *device_info) {
-    if (device_info->version[0] > 6 || device_info->version[0] < 5) return false;
-    //if (device_info->version[0] == 4 && device_info->version[1] != 3) return false;
-    return (strcmp(device_info->cpu_arch, "armv7") == 0 || strcmp(device_info->cpu_arch, "armv7s") == 0);
-}
-
-void print_install_logs(afc_info_t *afc_info) {
+    if (device_info->version[0] >= 8 || device_info->version[0] <= 3) return false;
+    if (device_info->version[0] == 4 && device_info->version[1] != 3) return false;
+    return !(strcmp(device_info->cpu_arch, "arm64") == 0 || strcmp(device_info->cpu_arch, "arm64e") == 0 || strcmp(device_info->cpu_arch, "armv6") == 0);
 }
 
 int main(int argc, char **argv) {
     parse_args(argc, argv);
-    print_log(INFO, "aquila jailbreak for iOS 5.0 - 6.1.6 by @staturnzdev\n");
+    print_log(INFO, "aquila jailbreak for iOS 4.3 - 7.1.2 by @staturnzdev\n");
 #if defined(WINDOWS_BUILD)
-    print_log(INFO, "version 2.0 (Windows)\n");
+    print_log(INFO, "version 2.1 (Windows)\n");
 #else
-    print_log(INFO, "version 2.0 (macOS)\n");
+    print_log(INFO, "version 2.1 (macOS)\n");
 #endif
 
     int err = platform_init();
@@ -179,11 +189,14 @@ int main(int argc, char **argv) {
         return -1;
     }
 
-
     device_info_t *device_info = md_device_info(device);
     if (device_info == NULL) {
         print_log(ERROR, "failed to get device info\n");
         return -1;
+    }
+
+    if (device_info->version[0] == 7) {
+        global_flags &= ~FLAG_FORCE_INSTALL;
     }
 
     if (device_info->version[2] == 0) {
@@ -192,8 +205,36 @@ int main(int argc, char **argv) {
         print_log(INFO, "%s on iOS %d.%d.%d connected\n", device_info->product_type, device_info->version[0], device_info->version[1], device_info->version[2]);
     }
 
+    if (has_flag(FLAG_INSTALL_LOG) || has_flag(FLAG_SYSTEM_LOG) || has_flag(FLAG_REBOOT)) {
+        if (has_flag(FLAG_INSTALL_LOG)) {
+            afc_info_t *afc_info = afc_init(device);
+            if (afc_info == NULL) {
+                print_log(ERROR, "failed to connect to AFC\n");
+                return -1;
+            }
+            
+            afc_file_data_t *file = afc_read_file(afc_info, "aquila_log.txt");
+            if (file == NULL) file = afc_read_file(afc_info, "/aquila_log.txt");
+            if (file == NULL) {
+                print_log(INFO, "no install log found\n");
+            } else {
+                fprintf(stdout, "%.*s\n", (int)file->size, (char *)file->bytes);
+            }
+        } else if (has_flag(FLAG_SYSTEM_LOG)) {
+            syslog_info_t *syslog_info = syslog_init(device);
+            if (syslog_info == NULL) return 0;
+
+            syslog_print_logs(syslog_info);
+            syslog_deinit(syslog_info);
+        } else if (has_flag(FLAG_REBOOT)) {
+            print_log(INFO, "rebooting device...\n");
+            md_reboot_device(device);
+        }
+        return 0;
+    }
+
     if (!is_device_supported(device_info)) {
-        print_log(ERROR, "device version is not supported\n");
+        print_log(ERROR, "device version or architecture unsupported\n");
         return -1;
     }
 
@@ -206,17 +247,6 @@ int main(int argc, char **argv) {
     if (afc_info == NULL) {
         print_log(ERROR, "failed to connect to AFC\n");
         return -1;
-    }
-
-    if ((global_flags & FLAG_VIEW_LOGS) == FLAG_VIEW_LOGS) {
-        afc_file_data_t *file = afc_read_file(afc_info, "aquila_log.txt");
-        if (file == NULL) file = afc_read_file(afc_info, "/aquila_log.txt");
-        if (file == NULL) {
-            print_log(INFO, "no logs found\n");
-        } else {
-            printf("%s\n", file->bytes);
-        }
-        return 0;
     }
 
     if (jailbreak(device, device_info, afc_info) != 0) {

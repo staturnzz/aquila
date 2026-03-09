@@ -1,0 +1,5 @@
+#!/bin/bash
+# preinst
+
+rm -rf /tmp/aquila
+exit 0

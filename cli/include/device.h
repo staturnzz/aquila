@@ -16,6 +16,15 @@ typedef enum {
     INTERFACE_TYPE_PROXY
 } md_interface_type_t;
 
+typedef enum {
+    SERVICE_STATUS_UNKNOWN = -1,
+    SERVICE_STATUS_SUCCESS,
+    SERVICE_STATUS_CHECKIN,
+    SERVICE_STATUS_EXPLOIT,
+    SERVICE_STATUS_PATCHES,
+    SERVICE_STATUS_BOOTSTRAP
+} service_status_t;
+
 #pragma pack(push, 1)
 typedef struct {
     uint8_t __unk0[16];
@@ -55,9 +64,9 @@ typedef struct {
     char *uuid;
     char *product_type;
     char *activation;
+    char *name;
     int version[3];
 } device_info_t;
-
 
 #if defined(WINDOWS_BUILD)
 extern int (*AMDeviceNotificationSubscribe)(void *callback, uint32_t __unk0, uint32_t __unk1, uint32_t cookie, am_device_notification_t **subscription);
@@ -94,6 +103,10 @@ extern mach_error_t AMDeviceStopSession(am_device_t *device);
 extern int AMDeviceSecureStartService(am_device_t *device, CFStringRef service, CFDictionaryRef flags, void *handle);
 extern int AMDServiceConnectionReceiveMessage(void *service, CFPropertyListRef message, CFPropertyListFormat *format);
 extern int AMDServiceConnectionSendMessage(void *service, CFPropertyListRef message, CFPropertyListFormat format);
+extern int AMDServiceConnectionReceive(void *service, char *buf, size_t size);
+extern int AMDServiceConnectionSend(void *service, const void *message, size_t length);
+extern int AMDServiceConnectionGetSocket(void *service);
+extern int AMDServiceConnectionInvalidate(void *service);
 extern md_interface_type_t AMDeviceGetInterfaceType(am_device_t *device);
 extern am_device_t *AMDeviceCopyPairedCompanion(am_device_t *device);
 extern mach_error_t AMDeviceLookupApplications(am_device_t *device, CFDictionaryRef options, CFDictionaryRef *result);
@@ -106,7 +119,6 @@ extern char *AMDErrorString(uint32_t err);
 extern char *AFCErrorString(uint32_t err);
 #endif
 
-
 int md_init(void);
 void md_deinit(void);
 am_device_t *md_await_device(void);
@@ -114,6 +126,8 @@ device_info_t *md_device_info(am_device_t *device);
 int md_open_service(am_device_t *device, const char *name, bool timeout);
 void *md_open_secure_service(am_device_t *device, const char *name);
 void md_close_service(int service);
+void md_close_secure_service(void *service);
+service_status_t md_service_status(void *service);
 int md_reboot_device(am_device_t *device);
 
 #endif /* device_h */

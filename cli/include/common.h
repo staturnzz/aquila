@@ -9,7 +9,9 @@
 #define FLAG_NO_COLOR 0x0010
 #define FLAG_ANSI_COLOR 0x0020
 #define FLAG_WINCONSOLE_COLOR 0x0040
-#define FLAG_VIEW_LOGS 0x0080
+#define FLAG_INSTALL_LOG 0x0080
+#define FLAG_SYSTEM_LOG 0x0100
+#define FLAG_REBOOT 0x0200
 
 #define has_flag(flag) ((global_flags & flag) == flag)
 
@@ -125,6 +127,7 @@ extern void (*CFShow)(CFTypeRef object);
 #include <CoreFoundation/CoreFoundation.h>
 #include <getopt.h>
 #include <asl.h>
+#include <pthread.h>
 #include <pwd.h>
 #include <CommonCrypto/CommonDigest.h>
 #include <dlfcn.h>

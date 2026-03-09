@@ -105,6 +105,7 @@ afc_file_ref_t afc_open_file(afc_info_t *info, const char *path, uint64_t mode);
 void afc_close_file(afc_info_t *info, afc_file_ref_t file);
 afc_file_ref_t afc_create_file(afc_info_t *info, const char *path);
 int afc_write_file(afc_info_t *info, afc_file_ref_t file, void *data, uint32_t size);
+bool afc_file_exists(afc_info_t *info, const char *path);
 uint32_t afc_get_file_size(afc_info_t *info, const char *path);
 afc_file_data_t *afc_read_file(afc_info_t *info, const char *path);
 int afc_create_symlink(afc_info_t *info, const char *from, const char *to);

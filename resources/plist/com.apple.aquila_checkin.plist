@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+	<dict>
+		<key>AllowUnauthenticatedServices</key>
+		<true/>
+		<key>EnvironmentVariables</key>
+		<dict>
+			<key>LAUNCHD_SOCKET</key>
+			<string>/private/var/tmp/launchd/sock</string>
+		</dict>
+		<key>Label</key>
+		<string>com.apple.aquila_checkin</string>
+		<key>RunAtLoad</key>
+		<true/>
+		<key>ProgramArguments</key>
+		<array>
+			<string>/sbin/mount</string>
+			<string>-u</string>
+			<string>-o</string>
+			<string>rw,suid,dev</string>
+			<string>/</string>
+		</array>
+		<key>UserName</key>
+		<string>root</string>
+	</dict>
+</plist>

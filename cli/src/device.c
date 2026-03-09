@@ -85,15 +85,6 @@ static void md_connect_handler(am_device_notification_callback_info_t *info, int
 }
 
 int md_init(void) {
-#if defined(MACOS_BUILD)
-    if (has_flag(FLAG_VERBOSE_LOGGING)) {
-        setenv("AFCDEBUG", "1", true);
-        AFCSetLogLevel(6);
-        AFCPlatformInitialize();
-        AMDSetLogLevel(5);
-    }
-#endif
-
     int err = AMDeviceNotificationSubscribe(md_connect_handler, 0, 0, 0, &md_notification);
     if (err != 0) {
         print_log(VERBOSE, "AMDeviceNotificationSubscribe failed: %d\n", err);
@@ -150,6 +141,7 @@ device_info_t *md_device_info(am_device_t *device) {
     char *product_type = NULL;
     char *version = NULL;
     char *activation = NULL;
+    char *name = NULL;
 
     if ((cpu_arch = md_get_device_value(device, "CPUArchitecture")) == NULL) goto err;
     if ((hw_model = md_get_device_value(device, "HardwareModel")) == NULL) goto err;
@@ -157,6 +149,7 @@ device_info_t *md_device_info(am_device_t *device) {
     if ((product_type = md_get_device_value(device, "ProductType")) == NULL) goto err;
     if ((version = md_get_device_value(device, "ProductVersion")) == NULL) goto err;
     if ((activation = md_get_device_value(device, "ActivationState")) == NULL) goto err;
+    if ((name = md_get_device_value(device, "DeviceName")) == NULL) goto err;
 
     device_info_t *info = calloc(1, sizeof(device_info_t));
     info->activation = activation;
@@ -164,6 +157,7 @@ device_info_t *md_device_info(am_device_t *device) {
     info->hw_model = hw_model;
     info->uuid = uuid;
     info->product_type = product_type;
+    info->name = name;
 
     sscanf(version, "%d.%d.%d", &info->version[0], &info->version[1], &info->version[2]);
     free(version);
@@ -176,6 +170,8 @@ err:
     if (uuid != NULL) free(uuid);
     if (product_type != NULL) free(product_type);
     if (version != NULL) free(version);
+    if (activation != NULL) free(activation);
+    if (name != NULL) free(name);
     return NULL;
 }
 
@@ -213,6 +209,40 @@ void md_close_service(int service) {
 #if defined(MACOS_BUILD)
     if (service >= 0) close(service);
 #endif
+}
+
+void md_close_secure_service(void *service) {
+#if defined(MACOS_BUILD)
+    if (service != NULL) CFRelease(service);
+#endif
+}
+
+service_status_t md_service_status(void *service) {
+    CFTypeRef message = NULL;
+    AMDServiceConnectionReceiveMessage(service, &message, NULL);
+    if (message == NULL) return SERVICE_STATUS_UNKNOWN;
+
+    CFStringRef status_str = CFDictionaryGetValue(message, CFSTR("Status"));
+    if (status_str == NULL) {
+        CFRelease(message);
+        return SERVICE_STATUS_UNKNOWN;
+    }
+
+    service_status_t status = SERVICE_STATUS_UNKNOWN;
+    if (CFEqual(status_str, CFSTR("exploit_failed"))) {
+        status = SERVICE_STATUS_EXPLOIT;
+    } else if (CFEqual(status_str, CFSTR("patch_failed"))) {
+        status = SERVICE_STATUS_PATCHES;
+    } else if (CFEqual(status_str, CFSTR("install_failed"))) {
+        status = SERVICE_STATUS_BOOTSTRAP;
+    } else if (CFEqual(status_str, CFSTR("checkin"))) {
+        status = SERVICE_STATUS_CHECKIN;
+    } else if (CFEqual(status_str, CFSTR("install_success"))) {
+        status = SERVICE_STATUS_SUCCESS;
+    } 
+
+    CFRelease(message);
+    return status;
 }
 
 int md_reboot_device(am_device_t *device) {

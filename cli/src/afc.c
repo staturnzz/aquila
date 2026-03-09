@@ -93,7 +93,7 @@ afc_file_ref_t afc_open_file(afc_info_t *info, const char *path, uint64_t mode) 
 }
 
 void afc_close_file(afc_info_t *info, afc_file_ref_t file) {
-    AFCFileRefClose(info->connection, file);
+    if (file != NULL) AFCFileRefClose(info->connection, file);
 }
 
 afc_file_ref_t afc_create_file(afc_info_t *info, const char *path) {
@@ -103,6 +103,13 @@ afc_file_ref_t afc_create_file(afc_info_t *info, const char *path) {
 
 int afc_write_file(afc_info_t *info, afc_file_ref_t file, void *data, uint32_t size) {
     return AFCFileRefWrite(info->connection, file, data, size);
+}
+
+bool afc_file_exists(afc_info_t *info, const char *path) {
+    afc_file_ref_t file = NULL;
+    if (AFCFileRefOpen(info->connection, path, AFC_FOPEN_RDONLY, &file) != 0 || file == NULL) return false;
+    AFCFileRefClose(info->connection, file);
+    return true;
 }
 
 uint32_t afc_get_file_size(afc_info_t *info, const char *path) {
@@ -125,7 +132,11 @@ uint32_t afc_get_file_size(afc_info_t *info, const char *path) {
 }
 
 afc_file_data_t *afc_read_file(afc_info_t *info, const char *path) {
+#if defined(WINDOWS_BUILD)
+    uint64_t len = afc_get_file_size(info, path);
+#else
     uint32_t len = afc_get_file_size(info, path);
+#endif
     if (len == 0) return NULL;
 
     afc_file_data_t *data = calloc(1, sizeof(afc_file_data_t));
@@ -179,7 +190,7 @@ int afc_delete_item(afc_info_t *info, const char *path) {
         } else {
             snprintf(path_buf, 1024-1, "%s/%s", path, entry);
         }
-        afc_delete_item(info, entry);
+        afc_delete_item(info, path_buf);
     }
 
     afc_close_dir(info, dir);

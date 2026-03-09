@@ -20,6 +20,30 @@
 
 typedef struct {
     struct {
+        uint32_t proc_enforce;
+        uint32_t cs_enforcement_disable;
+        uint32_t bootargs;
+        uint32_t mount_common;
+        uint32_t pmap_location;
+        uint32_t csops;
+        uint32_t sandbox_call_i_can_has_debugger;
+        uint32_t i_can_has_debugger_1;
+        uint32_t i_can_has_debugger_2;
+        uint32_t vm_fault_enter_patch;
+        uint32_t vm_map_enter_patch;
+        uint32_t vm_map_protect_patch;
+        uint32_t tfp0_patch;
+        uint32_t sb_patch;
+        uint32_t vn_getpath;
+        uint32_t memcmp;
+        uint32_t container_required_patch;
+        uint32_t tte_virt;
+        uint32_t tte_phys;
+        uint32_t pmap_count;
+        uint32_t *pmap_list;
+        uint32_t kern_phys_base;
+    } ios_7;
+    struct {
         uint32_t pmap_location;
         uint32_t proc_enforce;
         uint32_t cs_enforcement_disable_amfi;
@@ -60,6 +84,15 @@ typedef struct {
         uint32_t sb_patch;
     } ios_4;
 } patches_t;
+
+extern void sb_eval7_trampoline(void);
+extern void sb_eval7_hook(void);
+extern uint32_t sb_eval7_trampoline_hook_addr;
+extern uint32_t sb_eval7_trampoline_len;
+extern uint32_t sb_eval7_hook_orig_addr;
+extern uint32_t sb_eval7_hook_vn_getpath;
+extern uint32_t sb_eval7_hook_memcmp;
+extern uint32_t sb_eval7_hook_len;
 
 extern void sb_eval_trampoline(void);
 extern void sb_eval_hook(void);
