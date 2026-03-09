@@ -1,6 +1,6 @@
 <img align="left" width="100" height="100" src="logo.png" alt="logo" style="float: left;"/>
 
-<h3 align="left">Aquila. <br>iOS 5.0 - 6.1.6 untethered jailbreak for all devices<div align="right" style="float: top;">
+<h3 align="left">Aquila. <br>iOS 4.3 - 7.1.2 untethered jailbreak for all devices<div align="right" style="float: top;">
 </br></h3> 
 
 # Information:
