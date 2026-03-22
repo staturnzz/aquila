@@ -32,6 +32,7 @@ SRC = $(wildcard src/*.c)
 all: $(SRC)
 	$(CC) $(CFLAGS) $(LDFLAGS) -o aquila $^
 	$(LDID) -Sents.xml aquila
+	zip -rj aquila_macos.zip aquila
 
 clean:
 	@rm -rf aquila

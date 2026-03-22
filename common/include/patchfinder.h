@@ -53,5 +53,7 @@ uint32_t find_sb_patch_ios_7(uint32_t region, uint8_t *kdata, size_t ksize);
 uint32_t find_vn_getpath_ios_7(uint32_t region, uint8_t *kdata, size_t ksize);
 uint32_t find_memcmp_ios_7(uint32_t region, uint8_t *kdata, size_t ksize);
 uint32_t find_container_required_patch_ios_7(uint32_t region, uint8_t *kdata, size_t ksize);
+uint32_t find_sysent_ios_7(uint32_t region, uint8_t *kdata, size_t ksize);
+uint32_t find_copyinstr_ios_7(uint32_t region, uint8_t *kdata, size_t ksize);
 
 #endif /* patchfinder_h */

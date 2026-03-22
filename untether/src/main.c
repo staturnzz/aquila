@@ -104,54 +104,6 @@ int start_daemons(void) {
     return 0;
 }
 
-/*
-uint32_t vnode_for_path(const char *path) {
-    uint32_t p_fd = 0;
-    uint32_t fd_ofiles = 0;
-    uint32_t fproc = 0;
-    uint32_t f_fglob = 0;
-    uint32_t vnode = 0;
-  
-    int fd = open(path, O_RDONLY);
-    if (fd < 0) return 0;
-
-    for (uint32_t i = 0; i < 10; i++) {
-        usleep(10);
-        sync();
-    }
-
-    if ((p_fd = kread32(kinfo->self_proc_addr + 0x90)) == 0) goto done;
-    if ((fd_ofiles = kread32(p_fd + 0x0)) == 0) goto done;
-    if ((fproc = kread32(fd_ofiles + (fd * 0x4))) == 0) goto done;
-    if ((f_fglob = kread32(fproc + 0x8)) == 0) goto done;
-    if ((vnode = kread32(f_fglob + 0x28)) == 0) goto done;
-
-done:
-    close(fd);
-    return vnode;
-}
-
-int namecache_swap_vnode(const char *target, const char *replacement) {
-    uint32_t target_vnode = vnode_for_path(target);
-    uint32_t replacement_vnode = vnode_for_path(replacement);
-    if (target_vnode == 0 || replacement_vnode == 0) return -1;
-
-    uint32_t namecache = kread32(target_vnode + 0x1c);
-    if (namecache == 0) return -1;
-
-    kwrite32(target_vnode + 0x34, 100);
-    kwrite32(target_vnode + 0x38, 100);
-    kwrite32(target_vnode + 0x3c, 100);
-    kwrite32(replacement_vnode + 0x34, 100);
-    kwrite32(replacement_vnode + 0x38, 100);
-    kwrite32(replacement_vnode + 0x3c, 100);
-
-    kwrite32(namecache + 0x24, replacement_vnode);
-    sync();
-    return 0;
-}
-*/
-
 int main(void) {
     setuid(0);
     setgid(0);
@@ -166,7 +118,7 @@ int main(void) {
     }
 
     print_log("[*] exploit done\n");
-    if (patch_kernel() != 0) {
+    if (patch_kernel(false) != 0) {
         print_log("[-] failed to patch kernel\n");
         return -1;
     }
@@ -190,18 +142,6 @@ int main(void) {
 
         kwrite32(kinfo->self_proc_addr + 0x8c, self_ucred);
         print_log("[*] rootfs remounted\n");
-
-        /*
-        unlink("/usr/lib/fake.dylib");
-        FILE *file = fopen("/usr/lib/fake.dylib", "wb+");
-        if (file != NULL) {
-            fflush(file);
-            fclose(file);
-        }
-
-        sync();
-        namecache_swap_vnode("/usr/lib/libmis.dylib", "/usr/lib/fake.dylib");
-        */
     } else {
         launchctl_unsetenv();
     }

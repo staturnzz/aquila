@@ -122,7 +122,7 @@ void set_bootargs(patches_t *patches, const char *bootargs) {
     usleep(10000);
 }
 
-int patch_kernel(void) {
+int patch_kernel(bool is_installer) {
     patches_t *patches = calloc(1, sizeof(patches_t));
     kernel_data = calloc(1, kernel_data_size);
     kread_buf(kinfo->kernel_base, kernel_data, kernel_data_size);
@@ -147,6 +147,13 @@ int patch_kernel(void) {
         if ((patches->ios_7.memcmp = find_patch_offset(find_memcmp_ios_7)) == 0) goto done;
         if ((patches->ios_7.container_required_patch = find_patch_offset(find_container_required_patch_ios_7)) == 0) goto done;
         if ((patches->ios_7.pmap_list = calloc(1, TTB_SIZE * sizeof(uint32_t))) == NULL) goto done;
+
+        if (!is_installer) {
+            if ((patches->ios_7.sysent_base = find_patch_offset(find_sysent_ios_7)) == 0) goto done;
+            if ((patches->ios_7.copyinstr = find_patch_offset(find_copyinstr_ios_7)) == 0) goto done;
+            patches->ios_7.sysent_stat64 = patches->ios_7.sysent_base + 0x1A68;
+            patches->ios_7.sysent_stat = patches->ios_7.sysent_base + 0xEB0;
+        }
 
         uint32_t kernel_pmap_store = kread32(patches->ios_7.pmap_location);
         patches->ios_7.tte_virt = kread32(kernel_pmap_store);
@@ -240,12 +247,42 @@ int patch_kernel(void) {
 
             kwrite_buf_exec(patches, (kinfo->kernel_base + 0x800), hook_data, hook_size);
             kwrite_buf_exec(patches, patches->ios_7.sb_patch, trampoline, sb_eval7_trampoline_len);
+
+            usleep(100000);
             free(hook_data);
+            free(overwritten_inst);
+            free(trampoline);
         }
-        
-        usleep(100000);
-        free(overwritten_inst);
-        free(trampoline);
+
+        if (!is_installer) {
+            uint8_t *dsc_patch_addr = (uint8_t *)(((uint32_t)&dsc_patch) & ~1);
+            uint8_t *stat64_data = calloc(1, 0x100);
+            uint8_t *stat_data = calloc(1, 0x100);
+            memcpy(stat64_data, dsc_patch_addr, 0x100);
+            memcpy(stat_data, dsc_patch_addr, 0x100);
+
+            uint32_t search_data = 0x42424242;
+            void *stat64_ptr_loc = memmem(stat64_data, 0x100, &search_data, sizeof(search_data));
+            void *stat_ptr_loc = memmem(stat_data, 0x100, &search_data, sizeof(search_data));
+
+            search_data = 0x41414141;
+            void *stat64_copyinstr_loc = memmem(stat64_data, 0x100, &search_data, sizeof(search_data));
+            void *stat_copyinstr_loc = memmem(stat_data, 0x100, &search_data, sizeof(search_data));
+
+            *(uint32_t *)stat64_ptr_loc = kread32(patches->ios_7.sysent_stat64);
+            *(uint32_t *)stat_ptr_loc = kread32(patches->ios_7.sysent_stat);
+            *(uint32_t *)stat64_copyinstr_loc = patches->ios_7.copyinstr;
+            *(uint32_t *)stat_copyinstr_loc = patches->ios_7.copyinstr;
+
+            kwrite_buf_exec(patches, (kinfo->kernel_base + 0x600), stat64_data, 0x100);
+            kwrite_buf_exec(patches, (kinfo->kernel_base + 0x700), stat_data, 0x100);
+            kwrite32_exec(patches, patches->ios_7.sysent_stat64, (kinfo->kernel_base + 0x600) | 0x1);
+            kwrite32_exec(patches, patches->ios_7.sysent_stat, (kinfo->kernel_base + 0x700) | 0x1);
+            
+            usleep(100000);
+            free(stat64_data);
+            free(stat_data);
+        }
     } else if (kinfo->version[0] == 6) {
         if ((patches->ios_6.pmap_location = find_patch_offset(find_pmap_location)) == 0) goto done;
         if ((patches->ios_6.proc_enforce = find_patch_offset(find_proc_enforce)) == 0) goto done;

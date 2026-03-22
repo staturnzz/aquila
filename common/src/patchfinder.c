@@ -1610,3 +1610,72 @@ uint32_t find_container_required_patch_ios_7(uint32_t region, uint8_t *kdata, si
 	if (str == NULL) return 0;
 	return (uintptr_t)str - (uintptr_t)kdata;
 }
+
+uint32_t find_sysent_ios_7(uint32_t region, uint8_t *kdata, size_t ksize) {
+	const struct find_search_mask search_mask_1[] = {
+        {0xFFC0, 0x68C0},
+        {0xFF00, 0x4500},
+        {0xFF00, 0xD000},
+        {0xFF80, 0x6900},
+        {0xFF00, 0x4500},
+        {0xFFFF, 0xBF1C},
+        {0xFFC0, 0x6940},
+        {0xFF00, 0x4500},
+        {0xFF00, 0xD000}
+	};
+
+	uint16_t *ptr = find_with_search_mask(region, kdata, ksize, sizeof(search_mask_1) / sizeof(*search_mask_1), search_mask_1);
+	if (ptr == NULL) return 0;
+
+    const struct find_search_mask search_mask_2[] = {
+        {0xF8FF, 0x2800},
+        {0xFF00, 0xD000},
+	};
+
+    ptr = find_with_search_mask(region, (uint8_t *)ptr + 0x12, 0x72, sizeof(search_mask_2) / sizeof(*search_mask_2), search_mask_2);
+	if (ptr == NULL) return 0;
+
+    uint32_t target = 0;
+    for (uint32_t i = 0; i < 0xd0; i+=0x2) {
+        if (insn_is_preamble_push((uint16_t *)((uint8_t *)ptr - i))) {
+            target = ((uintptr_t)ptr - ((uintptr_t)kdata) - i) + region;
+            if (!insn_is_32bit((uint16_t *)((uint8_t *)ptr - i))) target |= 0x1;
+            break;
+        }
+    }
+
+    uint16_t *loc = memmem(kdata, ksize, &target, sizeof(target));
+    if (loc == NULL) return 0;
+	return (uintptr_t)loc - (uintptr_t)kdata - 0x9D8;
+}
+
+uint32_t find_copyinstr_ios_7(uint32_t region, uint8_t *kdata, size_t ksize) {
+	const struct find_search_mask search_mask_1[] = {
+        {0x0FFF, 0x0F90},
+        {0xFFFF, 0xEE1D},
+        {0x0000, 0x0000},
+        {0xFFF0, 0xE590},
+        {0x0000, 0x0000},
+        {0xFFF0, 0xE580},
+        {0x0000, 0x0000},
+        {0xFFF0, 0xE590},
+        {0x0FFF, 0x0F10},
+        {0xFFFF, 0xEE02},
+        {0x0000, 0x0000},
+        {0xFFF0, 0xE590},
+        {0x0FFF, 0x0F30},
+        {0xFFFF, 0xEE0D}
+	};
+
+	uint16_t *ptr = find_with_search_mask(region, kdata, ksize, sizeof(search_mask_1) / sizeof(*search_mask_1), search_mask_1);
+	if (ptr == NULL) return 0;
+
+    for (uint32_t i = 0; i < 0x30; i+=0x2) {
+        if (insn_is_preamble_push((uint16_t *)((uint8_t *)ptr - i))) {
+            return (uintptr_t)ptr - ((uintptr_t)kdata) - i;
+        }
+    }
+	return 0;
+}
+
+

@@ -157,7 +157,7 @@ int main(void) {
         usleep(100000);
     }
 
-    if (patch_kernel() != 0) {
+    if (patch_kernel(true) != 0) {
         print_log("[-] failed to patch kernel\n");
         return -1;
     }

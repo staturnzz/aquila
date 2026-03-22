@@ -155,9 +155,9 @@ int main(int argc, char **argv) {
     parse_args(argc, argv);
     print_log(INFO, "aquila jailbreak for iOS 4.3 - 7.1.2 by @staturnzdev\n");
 #if defined(WINDOWS_BUILD)
-    print_log(INFO, "version 2.1 (Windows)\n");
+    print_log(INFO, "version 2.1.1 (Windows)\n");
 #else
-    print_log(INFO, "version 2.1 (macOS)\n");
+    print_log(INFO, "version 2.1.1 (macOS)\n");
 #endif
 
     int err = platform_init();

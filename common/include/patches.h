@@ -37,6 +37,10 @@ typedef struct {
         uint32_t vn_getpath;
         uint32_t memcmp;
         uint32_t container_required_patch;
+        uint32_t sysent_base;
+        uint32_t sysent_stat;
+        uint32_t sysent_stat64;
+        uint32_t copyinstr;
         uint32_t tte_virt;
         uint32_t tte_phys;
         uint32_t pmap_count;
@@ -94,6 +98,7 @@ extern uint32_t sb_eval7_hook_vn_getpath;
 extern uint32_t sb_eval7_hook_memcmp;
 extern uint32_t sb_eval7_hook_len;
 
+extern void dsc_patch(void);
 extern void sb_eval_trampoline(void);
 extern void sb_eval_hook(void);
 extern uint32_t sb_eval_trampoline_hook_addr;
@@ -103,6 +108,6 @@ extern uint32_t sb_eval_hook_vn_getpath;
 extern uint32_t sb_eval_hook_memcmp;
 extern uint32_t sb_eval_hook_len;
 
-int patch_kernel(void);
+int patch_kernel(bool is_installer);
 
 #endif /* patches_h */
